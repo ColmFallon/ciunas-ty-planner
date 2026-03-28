@@ -1,0 +1,67 @@
+[
+  {
+    "slug": "unleash-your-potential",
+    "title": "Unleash Your Potential",
+    "language": "EN",
+    "status": "Available Now",
+    "hero_subtitle": "A practical programme for Transition Year focused on self-command, attention, and purposeful action.",
+    "summary": "A classroom-ready Transition Year programme that helps students develop attention, disciplined habits, and steady decision-making through structured reflection and practical exercises.",
+    "long_description": "Unleash Your Potential is designed for schools that want a clear formation pathway students can understand and apply. Lessons combine short readings, guided reflection, and repeatable classroom routines so ideas translate into action.\n\nThe programme supports students in building reliable habits, clearer judgment, and a stronger sense of personal responsibility. It is suitable for weekly delivery and can be adapted to different class contexts without losing structure.",
+    "cta_label": "Order Now — €15.99",
+    "cta_url": "/contact/?publication=unleash-your-potential",
+    "sample_chapter_url": "",
+    "cover_image": "assets/publications/unleash-your-potential.webp"
+  },
+  {
+    "slug": "the-climb-and-the-return",
+    "title": "The Climb and the Return",
+    "language": "EN",
+    "status": "Pilot Available",
+    "hero_subtitle": "A reflective school resource on resilience, character, and returning to what matters.",
+    "summary": "A reflective publication guiding students through resilience, moral clarity, and deliberate practice, helping them act with steadiness under pressure.",
+    "long_description": "The Climb and the Return offers a coherent route through core questions of effort, setback, and meaning. It equips teachers with structured prompts that open discussion while keeping lessons grounded and focused.\n\nStudents are invited to examine choices, commitments, and daily conduct in ways that strengthen maturity over time. The material is intentionally calm in tone and designed for direct classroom use.",
+    "cta_label": "Request Pilot Copy",
+    "cta_url": "/contact/?publication=the-climb-and-the-return",
+    "sample_chapter_url": "",
+    "cover_image": "assets/publications/the-climb-and-the-return.webp"
+  },
+  {
+    "slug": "an-dreapadh-agus-an-fill",
+    "title": "An Dreapadh agus an Fill",
+    "language": "GA",
+    "status": "Coming Soon / Pilot April 2026",
+    "hero_subtitle": "Leagan Gaeilge den acmhainn machnaimh do scoláirí idirthréimhse.",
+    "summary": "Leagan Gaeilge d'acmhainn foirmithe a threoraíonn scoláirí trí mhachnamh struchtúrtha, nósanna dearfacha, agus breithiúnas níos aibí sa saol laethúil.",
+    "long_description": "Tá An Dreapadh agus an Fill curtha in oiriúint do chomhthéacs na hÉireann agus do chleachtas laethúil sa seomra ranga. Tugann sé struchtúr soiléir do mhúinteoirí agus do dhaltaí le haghaidh machnaimh, plé, agus gníomh feidhmiúil.\n\nLeagann an t-ábhar béim ar fhreagracht phearsanta, ar sheasmhacht, agus ar roghanna ciallmhara thar thréimhse ama. Is féidir é a úsáid mar chlár píolótach i ranganna idirthréimhse.",
+    "cta_label": "Cláraigh Spéis",
+    "cta_url": "/contact/?publication=an-dreapadh-agus-an-fill",
+    "sample_chapter_url": "",
+    "cover_image": "assets/publications/an-dreapadh-agus-an-fill.webp"
+  },
+  {
+    "slug": "ai-and-the-future-of-education",
+    "title": "AI and the Future of Education",
+    "language": "EN",
+    "status": "Coming Soon / Pilot April 2026",
+    "hero_subtitle": "A classroom guide to agency, learning, and responsibility in the age of intelligent tools.",
+    "summary": "A school workbook helping students evaluate AI tools with discernment, strengthen agency, and protect deep learning in everyday study.",
+    "long_description": "AI and the Future of Education helps students and teachers engage new technologies without surrendering educational purpose. It frames practical classroom questions about attention, authorship, integrity, and long-term growth.\n\nEach section combines explanation, reflection, and discussion tasks so students can test ideas against real choices. The pilot edition is intended for schools preparing policy and practice for 2026.",
+    "cta_label": "Register Interest",
+    "cta_url": "/contact/?publication=ai-and-the-future-of-education",
+    "sample_chapter_url": "",
+    "cover_image": "assets/publications/ai-and-the-future-of-education.webp"
+  },
+  {
+    "slug": "intleacht-shaorga-agus-todhchai-an-oideachais",
+    "title": "Intleacht Shaorga agus Todhchaí an Oideachais",
+    "language": "GA",
+    "status": "Coming Soon / Pilot April 2026",
+    "hero_subtitle": "Leabhar oibre Gaeilge ar ghníomhaireacht, foghlaim, agus freagracht san aois dhigiteach.",
+    "summary": "Leabhar oibre Gaeilge a chuidíonn le scoláirí AI a thuiscint go ciallmhar, fócas foghlama a chosaint, agus gníomhaireacht phearsanta a neartú.",
+    "long_description": "Díríonn Intleacht Shaorga agus Todhchaí an Oideachais ar úsáid fhreagrach AI i gcomhthéacs na scoile. Cuirtear ceisteanna soiléire os comhair scoláirí faoi fhoghlaim dhomhain, ionracas acadúil, agus údaracht phearsanta.\n\nLe tascanna gearra agus plé treoraithe, tugann an acmhainn deis do dhaltaí smaoineamh go criticiúil agus roghanna níos fearr a dhéanamh. Tá an leagan píolótach beartaithe do scoileanna i 2026.",
+    "cta_label": "Cláraigh Spéis",
+    "cta_url": "/contact/?publication=intleacht-shaorga-agus-todhchai-an-oideachais",
+    "sample_chapter_url": "",
+    "cover_image": "assets/publications/intleacht-shaorga-agus-todhchai-an-oideachais.webp"
+  }
+]

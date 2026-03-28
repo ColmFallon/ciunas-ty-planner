@@ -1,0 +1,18 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+outputs/
+*.zip
+tools/ty-planner/outputs/
+*.pdf
+*.docx
+*.log
+.env
+.env.*
+.texlive-cache/
+Assets/.texlive-cache/
+Assets/**/.texlive-cache/
+Assets/Book assets/
+Conference Material/

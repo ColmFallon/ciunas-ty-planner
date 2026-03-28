@@ -1,0 +1,48 @@
+\documentclass{article}
+\usepackage[a4paper,margin=0pt]{geometry}
+\usepackage{fontspec}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\definecolor{Ivory}{RGB}{245,240,225}
+\setmainfont{TeX Gyre Pagella}
+\newfontfamily\CoverSans{TeX Gyre Heros}
+
+\begin{document}
+\begin{tikzpicture}[remember picture,overlay]
+  \node[anchor=center] at (current page.center) {%
+    \includegraphics[width=\paperwidth,height=\paperheight]{/Users/Colm/Documents/Ciunas website/assets/ai_cover_background_clean.png}%
+  };
+
+  \node[
+    anchor=north west,
+    align=left,
+    text=Ivory,
+    font=\bfseries\fontsize{42}{47}\selectfont
+  ] at ([xshift=18mm,yshift=-28mm]current page.north west) {AI and the Future\\of Education};
+
+  \node[
+    anchor=north west,
+    align=left,
+    text=Ivory,
+    font=\CoverSans\mdseries\fontsize{17}{23}\selectfont
+  ] at ([xshift=18mm,yshift=-99mm]current page.north west) {Learning, purpose, and work\\in an age of abundance};
+
+  \node[
+    anchor=north west,
+    align=left,
+    text=Ivory,
+    font=\CoverSans\mdseries\fontsize{13.2}{16.8}\selectfont
+  ] at ([xshift=18mm,yshift=-131mm]current page.north west) {A 12-lesson workbook for Transition Year};
+
+  \node[
+    anchor=south west,
+    align=left,
+    text=Ivory,
+    font=\CoverSans\mdseries\fontsize{12}{15}\selectfont
+  ] at ([xshift=18mm,yshift=18mm]current page.south west) {Colm Fallon\\Ciúnas Learning};
+\end{tikzpicture}
+\end{document}

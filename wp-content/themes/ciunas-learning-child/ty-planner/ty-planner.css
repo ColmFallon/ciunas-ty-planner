@@ -1,0 +1,56 @@
+.ciunas-ty-planner-page {
+    scroll-behavior: smooth;
+}
+
+.ciunas-ty-planner-hero,
+.ciunas-ty-planner-cta {
+    text-align: center;
+}
+
+.ciunas-ty-planner-copy {
+    max-width: 760px;
+}
+
+.ciunas-ty-planner-bullets {
+    margin: 1.25rem 0 0;
+    max-width: 760px;
+    padding-left: 1.2rem;
+}
+
+.ciunas-ty-planner-bullets li + li {
+    margin-top: 0.45rem;
+}
+
+.ciunas-ty-planner-tool-wrap {
+    scroll-margin-top: 7rem;
+}
+
+.ciunas-ty-planner-section-head {
+    margin-bottom: 1.25rem;
+}
+
+.ciunas-ty-planner-embed-shell {
+    overflow: hidden;
+    border: 1px solid var(--ciunas-edge);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.55);
+}
+
+.ciunas-ty-planner-frame {
+    display: block;
+    width: 100%;
+    height: 900px;
+    border: 0;
+    background: #ffffff;
+}
+
+.ciunas-ty-planner-fallback {
+    margin-top: 0.9rem;
+    color: var(--ciunas-muted);
+}
+
+@media (max-width: 800px) {
+    .ciunas-ty-planner-frame {
+        height: 1200px;
+    }
+}

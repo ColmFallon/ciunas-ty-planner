@@ -1,0 +1,59 @@
+% ai_future_cover_front_gaeilge.tex
+% Compile with: lualatex -interaction=nonstopmode -file-line-error ai_future_cover_front_gaeilge.tex
+
+\documentclass[12pt]{article}
+
+\usepackage[paperwidth=6in,paperheight=9in,margin=0in]{geometry}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{fontspec}
+
+\setmainfont{TeX Gyre Termes} % Elegant serif similar to English edition
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+% Background image
+\begin{tikzpicture}[remember picture,overlay]
+  \node[anchor=center] at (current page.center) {%
+    \includegraphics[width=\paperwidth,height=\paperheight]{Images/ai_cover_background.png}%
+  };
+\end{tikzpicture}
+
+% Title block
+\begin{tikzpicture}[remember picture,overlay]
+
+  % Main Title
+  \node[align=left,text=white] 
+    at ([xshift=-1.8in,yshift=-1.6in]current page.north east) {%
+    {\fontsize{36}{40}\selectfont AI agus Todhchaí\\
+    an Oideachais}%
+  };
+
+  % Subtitle
+  \node[align=left,text=white!90] 
+    at ([xshift=-1.8in,yshift=-2.9in]current page.north east) {%
+    {\fontsize{14}{18}\selectfont 
+    Foghlaim, cuspóir, agus obair\\
+    in aois na flúirse}%
+  };
+
+  % Workbook line
+  \node[align=left,text=white!85] 
+    at ([xshift=-1.8in,yshift=-3.7in]current page.north east) {%
+    {\fontsize{11.5}{14}\selectfont 
+    Leabhar oibre 12 cheacht don Idirbhliain}%
+  };
+
+  % Author
+  \node[align=left,text=white!90] 
+    at ([xshift=-1.8in,yshift=0.9in]current page.south east) {%
+    {\fontsize{11}{13}\selectfont Colm Fallon\\
+    Ciúnas Learning}%
+  };
+
+\end{tikzpicture}
+
+\end{document}

@@ -364,6 +364,68 @@ def preserve_named_style(value: str) -> str:
     return cleaned
 
 
+def _title_case_fragment(fragment: str) -> str:
+    if not fragment:
+        return fragment
+    if fragment.isupper():
+        return fragment
+    return fragment[:1].upper() + fragment[1:].lower()
+
+
+def normalise_school_display_name(value: str) -> str:
+    cleaned = preserve_named_style(value)
+    if not cleaned:
+        return ""
+
+    token_pattern = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ]+(?:['’][A-Za-zÀ-ÖØ-öø-ÿ]+)?")
+
+    def replace_token(match: re.Match[str]) -> str:
+        token = match.group(0)
+        if re.search(r"[A-ZÀ-ÖØ-Þ]", token):
+            return token
+        parts = re.split(r"(['’])", token)
+        rebuilt: list[str] = []
+        apostrophe_seen = False
+        for part in parts:
+            if part in {"'", "’"}:
+                apostrophe_seen = True
+                rebuilt.append(part)
+                continue
+            if apostrophe_seen and len(part) == 1:
+                rebuilt.append(part.lower())
+            else:
+                rebuilt.append(_title_case_fragment(part))
+            apostrophe_seen = False
+        return "".join(rebuilt)
+
+    return token_pattern.sub(replace_token, cleaned)
+
+
+def normalise_display_field(key: str, value: str, output_language: str) -> str:
+    value = preserve_named_style(value)
+    value = re.sub(r"\s+", " ", value).strip()
+    if not value:
+        return ""
+
+    if key in {"school_name", "ty_coordinator"}:
+        return normalise_school_display_name(value)
+
+    if output_language == "ga" and key in {"priorities", "work_experience", "school_type", "school_ethos", "additional_context"}:
+        value = translate_value_for_irish(value)
+
+    if key == "cohort_size":
+        value = normalise_cohort_size(value, output_language)
+
+    if key == "language":
+        explicit = requested_output_language(value)
+        if explicit == "ga":
+            return "Irish"
+        if explicit == "en":
+            return "English"
+
+    return value
+
+
 def translate_value_for_irish(value: str) -> str:
     translated = value
     for source, target in sorted(IRISH_VALUE_MAP.items(), key=lambda item: len(item[0]), reverse=True):
@@ -382,18 +444,7 @@ def normalise_cohort_size(value: str, output_language: str) -> str:
 def normalise_template_context(context: dict[str, str], output_language: str) -> dict[str, str]:
     normalised: dict[str, str] = {}
     for key, raw_value in context.items():
-        value = preserve_named_style(raw_value)
-        value = re.sub(r"\s+", " ", value).strip()
-        if output_language == "ga" and key in {"priorities", "work_experience", "school_type", "school_ethos"}:
-            value = translate_value_for_irish(value)
-        if key == "cohort_size":
-            value = normalise_cohort_size(value, output_language)
-        if key == "language":
-            explicit = requested_output_language(value)
-            if explicit == "ga":
-                value = "Irish"
-            elif explicit == "en":
-                value = "English"
+        value = normalise_display_field(key, raw_value, output_language)
         normalised[key] = value
     return normalised
 

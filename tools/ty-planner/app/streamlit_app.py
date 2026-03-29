@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 from datetime import datetime
 from io import BytesIO
+import os
 import re
 import shutil
 import subprocess
@@ -24,7 +25,13 @@ SHOW_DOCX_DIAGNOSTIC = False
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from answer_query import answer_question, normalise_template_context, parse_template_context, requested_output_language  # noqa: E402
+from answer_query import (  # noqa: E402
+    answer_question,
+    normalise_school_display_name,
+    normalise_template_context,
+    parse_template_context,
+    requested_output_language,
+)
 
 
 def split_layer_prefix(text: str) -> tuple[str | None, str]:
@@ -262,7 +269,7 @@ def build_cover_page_text(language: str) -> tuple[str, str, str, str]:
 def build_title_block_values(language: str, context: dict[str, str] | None = None) -> tuple[str, str, bool]:
     _, _, coordinator_label, _ = build_cover_page_text(language)
     context = normalise_template_context(context or {}, language)
-    school_name = str(context.get("school_name", "")).strip()
+    school_name = normalise_school_display_name(str(context.get("school_name", "")).strip())
     ty_coordinator = str(context.get("ty_coordinator", "")).strip()
 
     school_value = school_name if school_name else "______________________"
@@ -397,7 +404,54 @@ def build_plan_latex(full_plan_text: str, context: dict[str, str] | None = None)
     )
 
 
-def build_pdf_fallback_bytes(full_plan_text: str, title: str) -> bytes:
+def resolve_reportlab_fonts():
+    from pathlib import Path as _Path
+
+    import reportlab
+
+    fonts_dir = _Path(reportlab.__file__).resolve().parent / "fonts"
+    font_sets = [
+        (
+            fonts_dir / "Vera.ttf",
+            fonts_dir / "VeraBd.ttf",
+            fonts_dir / "VeraIt.ttf",
+            "TYVera",
+            "TYVeraBold",
+            "TYVeraItalic",
+        ),
+        (
+            _Path("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"),
+            _Path("/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"),
+            _Path("/usr/share/fonts/truetype/dejavu/DejaVuSerif-Italic.ttf"),
+            "TYDejaVuSerif",
+            "TYDejaVuSerifBold",
+            "TYDejaVuSerifItalic",
+        ),
+        (
+            _Path("/System/Library/Fonts/Supplemental/Times New Roman.ttf"),
+            _Path("/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf"),
+            _Path("/System/Library/Fonts/Supplemental/Times New Roman Italic.ttf"),
+            "TYTimesNewRoman",
+            "TYTimesNewRomanBold",
+            "TYTimesNewRomanItalic",
+        ),
+        (
+            _Path("/System/Library/Fonts/Supplemental/Georgia.ttf"),
+            _Path("/System/Library/Fonts/Supplemental/Georgia Bold.ttf"),
+            _Path("/System/Library/Fonts/Supplemental/Georgia Italic.ttf"),
+            "TYGeorgia",
+            "TYGeorgiaBold",
+            "TYGeorgiaItalic",
+        ),
+    ]
+
+    for regular_path, bold_path, italic_path, regular_name, bold_name, italic_name in font_sets:
+        if regular_path.exists() and bold_path.exists() and italic_path.exists():
+            return (regular_path, bold_path, italic_path, regular_name, bold_name, italic_name)
+    return None
+
+
+def build_pdf_fallback_bytes(full_plan_text: str, title: str, context: dict[str, str] | None = None) -> bytes:
     try:
         from reportlab.lib import colors
         from reportlab.lib.enums import TA_CENTER
@@ -407,32 +461,24 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str) -> bytes:
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
         from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
-        import reportlab
     except Exception:
         # Final fallback if reportlab is unavailable.
         return (full_plan_text + "\n").encode("utf-8")
-
-    from pathlib import Path as _Path
 
     title_text, subtitle, sections = parse_plan_blocks(full_plan_text)
     language = infer_plan_language(title_text, subtitle)
     subtitle = standardised_export_subtitle(language)
     title_line_one, title_line_two, _coordinator_label, cover_note = build_cover_page_text(language)
-
-    fonts_dir = _Path(reportlab.__file__).resolve().parent / "fonts"
-    regular_font_path = fonts_dir / "Vera.ttf"
-    bold_font_path = fonts_dir / "VeraBd.ttf"
-    italic_font_path = fonts_dir / "VeraIt.ttf"
+    school_line, coordinator_line, has_school_name = build_title_block_values(language, context)
     regular_font = "Helvetica"
     bold_font = "Helvetica-Bold"
     italic_font = "Helvetica-Oblique"
-    if regular_font_path.exists() and bold_font_path.exists() and italic_font_path.exists():
-        pdfmetrics.registerFont(TTFont("TYVera", str(regular_font_path)))
-        pdfmetrics.registerFont(TTFont("TYVeraBold", str(bold_font_path)))
-        pdfmetrics.registerFont(TTFont("TYVeraItalic", str(italic_font_path)))
-        regular_font = "TYVera"
-        bold_font = "TYVeraBold"
-        italic_font = "TYVeraItalic"
+    font_set = resolve_reportlab_fonts()
+    if font_set:
+        regular_font_path, bold_font_path, italic_font_path, regular_font, bold_font, italic_font = font_set
+        pdfmetrics.registerFont(TTFont(regular_font, str(regular_font_path)))
+        pdfmetrics.registerFont(TTFont(bold_font, str(bold_font_path)))
+        pdfmetrics.registerFont(TTFont(italic_font, str(italic_font_path)))
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -473,6 +519,24 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str) -> bytes:
         textColor=colors.HexColor("#4A5560"),
         spaceAfter=10,
     )
+    school_style = ParagraphStyle(
+        "TYSchool",
+        parent=styles["Title"],
+        fontName=bold_font if has_school_name else regular_font,
+        fontSize=17 if has_school_name else 13,
+        leading=22 if has_school_name else 18,
+        alignment=TA_CENTER,
+        spaceAfter=10,
+    )
+    coordinator_style = ParagraphStyle(
+        "TYCoordinator",
+        parent=styles["Normal"],
+        fontName=regular_font,
+        fontSize=11,
+        leading=15,
+        alignment=TA_CENTER,
+        spaceAfter=18,
+    )
     heading_style = ParagraphStyle(
         "TYHeading",
         parent=styles["Heading1"],
@@ -505,6 +569,8 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str) -> bytes:
         Spacer(1, 10),
         Paragraph(subtitle, subtitle_style),
         Spacer(1, 10),
+        Paragraph(school_line, school_style),
+        Paragraph(coordinator_line, coordinator_style),
         Paragraph(cover_note, cover_note_style),
         PageBreak(),
     ]
@@ -644,26 +710,33 @@ def build_docx_bytes(full_plan_text: str, context: dict[str, str] | None = None)
 def build_pdf_bytes(full_plan_text: str, title: str, context: dict[str, str] | None = None) -> bytes:
     lualatex_path = shutil.which("lualatex")
     if not lualatex_path:
-        return build_pdf_fallback_bytes(full_plan_text, title)
+        return build_pdf_fallback_bytes(full_plan_text, title, context=context)
 
     latex_source = build_plan_latex(full_plan_text, context=context)
     with tempfile.TemporaryDirectory(prefix="ty_plan_pdf_", dir=GENERATED_PLANS_DIR) as temp_dir:
         temp_path = Path(temp_dir)
         tex_path = temp_path / "ty_plan_export.tex"
         pdf_path = temp_path / "ty_plan_export.pdf"
+        tex_cache_dir = temp_path / ".texlive-cache"
+        tex_cache_dir.mkdir(exist_ok=True)
         tex_path.write_text(latex_source, encoding="utf-8")
         try:
+            env = dict(os.environ)
+            env.setdefault("TEXMFCACHE", str(tex_cache_dir))
+            env.setdefault("TEXMFVAR", str(tex_cache_dir))
+            env.setdefault("HOME", str(temp_path))
             subprocess.run(
                 [lualatex_path, "-interaction=nonstopmode", "-halt-on-error", tex_path.name],
                 cwd=temp_path,
                 check=True,
                 capture_output=True,
                 text=True,
+                env=env,
             )
             return pdf_path.read_bytes()
         except Exception as exc:  # pragma: no cover
             print(f"[ty-plan-pdf] latex_fallback=true reason={exc.__class__.__name__}", flush=True)
-            return build_pdf_fallback_bytes(full_plan_text, title)
+            return build_pdf_fallback_bytes(full_plan_text, title, context=context)
 
 
 def main() -> None:

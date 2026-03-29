@@ -24,8 +24,11 @@ pip install -r requirements.txt
 
 - `OPENAI_API_KEY`
 - optional `OPENAI_MODEL`
+- optional `MAILCHIMP_API_KEY`
+- optional `MAILCHIMP_AUDIENCE_ID`
 
 If OpenAI is unavailable, the app falls back to the local generator.
+If Mailchimp secrets are present, planner lead submissions are also synced to Mailchimp and tagged as `TY Planner Lead`. Local CSV lead backup remains in place either way.
 
 ## Running locally
 

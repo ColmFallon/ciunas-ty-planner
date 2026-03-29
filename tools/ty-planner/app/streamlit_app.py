@@ -5,7 +5,10 @@ from __future__ import annotations
 
 import csv
 from datetime import datetime
+import hashlib
 from io import BytesIO
+import json
+import logging
 import os
 import re
 import shutil
@@ -13,6 +16,8 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 import zipfile
 
 import streamlit as st
@@ -25,6 +30,7 @@ LEADS_DIR = ROOT / "outputs" / "leads"
 SHOW_DOCX_DIAGNOSTIC = False
 SHOW_PDF_DIAGNOSTIC = False
 SHOW_PREVIEW_DIAGNOSTIC = False
+LOGGER = logging.getLogger(__name__)
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -296,6 +302,86 @@ def save_lead_row(row: dict[str, str]) -> Path:
             writer.writeheader()
         writer.writerow({field: row.get(field, "") for field in fieldnames})
     return leads_path
+
+
+def read_secret_or_env(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if value:
+        return value
+
+    try:
+        secret_value = st.secrets.get(name, "")
+    except Exception:
+        secret_value = ""
+
+    return str(secret_value).strip()
+
+
+def sync_mailchimp_lead(email: str, name: str | None = None) -> tuple[bool, str]:
+    api_key = read_secret_or_env("MAILCHIMP_API_KEY")
+    audience_id = read_secret_or_env("MAILCHIMP_AUDIENCE_ID")
+    if not api_key:
+        return False, "MAILCHIMP_API_KEY is missing."
+    if not audience_id:
+        return False, "MAILCHIMP_AUDIENCE_ID is missing."
+    if "-" not in api_key:
+        return False, "MAILCHIMP_API_KEY is missing its datacenter suffix."
+
+    datacenter = api_key.rsplit("-", 1)[-1].strip()
+    if not datacenter:
+        return False, "Could not derive Mailchimp datacenter from MAILCHIMP_API_KEY."
+
+    cleaned_email = email.strip().lower()
+    subscriber_hash = hashlib.md5(cleaned_email.encode("utf-8")).hexdigest()
+    first_name = (name or "").strip().split()[0] if (name or "").strip() else ""
+    base_url = f"https://{datacenter}.api.mailchimp.com/3.0"
+    member_url = f"{base_url}/lists/{audience_id}/members/{subscriber_hash}"
+    tags_url = f"{member_url}/tags"
+    auth_header = f"apikey {api_key}"
+
+    member_payload = {
+        "email_address": cleaned_email,
+        "status_if_new": "subscribed",
+        "status": "subscribed",
+        "merge_fields": {"FNAME": first_name},
+    }
+    tags_payload = {"tags": [{"name": "TY Planner Lead", "status": "active"}]}
+
+    def send_json(url: str, method: str, payload: dict[str, object]) -> tuple[bool, str]:
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib_request.Request(
+            url,
+            data=body,
+            method=method,
+            headers={
+                "Authorization": auth_header,
+                "Content-Type": "application/json",
+            },
+        )
+        try:
+            with urllib_request.urlopen(req, timeout=20) as response:
+                status = getattr(response, "status", 200)
+                if 200 <= status < 300:
+                    return True, f"{method} {url} returned {status}."
+                return False, f"{method} {url} returned unexpected status {status}."
+        except urllib_error.HTTPError as exc:
+            try:
+                detail = exc.read().decode("utf-8", "replace")
+            except Exception:
+                detail = ""
+            return False, f"{method} {url} failed with HTTP {exc.code}: {detail or exc.reason}"
+        except Exception as exc:
+            return False, f"{method} {url} failed: {exc.__class__.__name__}: {exc}"
+
+    member_ok, member_detail = send_json(member_url, "PUT", member_payload)
+    if not member_ok:
+        return False, member_detail
+
+    tags_ok, tags_detail = send_json(tags_url, "POST", tags_payload)
+    if not tags_ok:
+        return False, tags_detail
+
+    return True, "Mailchimp lead synced and tagged."
 
 
 def is_generator_result(answer_mode: str) -> bool:
@@ -1091,6 +1177,16 @@ def main() -> None:
                             "priorities": str(prompt_context.get("priorities", "")),
                         }
                     )
+                    mailchimp_ok, mailchimp_detail = sync_mailchimp_lead(cleaned_email, cleaned_name or None)
+                    if mailchimp_ok:
+                        LOGGER.info("TY planner lead synced to Mailchimp for %s", cleaned_email)
+                    else:
+                        LOGGER.warning(
+                            "TY planner Mailchimp sync failed for %s. Local CSV backup saved at %s. Detail: %s",
+                            cleaned_email,
+                            leads_path,
+                            mailchimp_detail,
+                        )
                     st.session_state["lead_email"] = cleaned_email
                     st.session_state["lead_name"] = cleaned_name
                     st.session_state["download_unlocked"] = True

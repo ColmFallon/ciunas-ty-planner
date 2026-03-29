@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = ROOT / "scripts"
 GENERATED_PLANS_DIR = ROOT / "outputs" / "generated_plans"
 LEADS_DIR = ROOT / "outputs" / "leads"
+SHOW_DOCX_DIAGNOSTIC = True  # Temporary deployment diagnostic; remove after live verification.
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -733,6 +734,16 @@ def main() -> None:
         st.caption("The downloadable version is formatted and ready to edit and share.")
         st.caption("Includes a clean layout suitable for school use.")
         st.caption(f"Export source length: {export_char_count} characters.")
+        if SHOW_DOCX_DIAGNOSTIC:
+            docx_runtime_available = bool(docx_bytes)
+            st.caption(
+                f"Temporary diagnostic: DOCX runtime support is {'available' if docx_runtime_available else 'unavailable'}."
+            )
+            if not docx_runtime_available:
+                st.caption(
+                    "Temporary diagnostic: DOCX unavailable reason: "
+                    f"{docx_error or 'build_docx_bytes returned no content.'}"
+                )
         if not st.session_state.get("download_unlocked"):
             with st.form("download_unlock_form", clear_on_submit=False):
                 lead_email = st.text_input(

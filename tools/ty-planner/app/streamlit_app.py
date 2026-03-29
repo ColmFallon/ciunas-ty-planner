@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+import zipfile
 
 import streamlit as st
 
@@ -57,6 +58,24 @@ def plan_sections_map(full_plan_text: str) -> tuple[str, str, dict[str, list[str
     return title, subtitle, section_map
 
 
+def preview_plan_sections(answer: str) -> tuple[str, str, list[tuple[str, list[str]]]]:
+    title, subtitle, sections = parse_plan_blocks(answer)
+    preview_aliases = [
+        {"programme overview", "forbhreathnú ar an gclár"},
+        {"rationale", "réasúnaíocht"},
+        {"aims", "aidhmeanna"},
+    ]
+    preview_sections: list[tuple[str, list[str]]] = []
+    for heading, paragraphs in sections:
+        normalised_heading = heading.strip().lower()
+        if preview_aliases and normalised_heading in preview_aliases[0]:
+            preview_sections.append((heading, paragraphs))
+            preview_aliases.pop(0)
+        if not preview_aliases:
+            break
+    return title, subtitle, preview_sections
+
+
 def render_plan_sections(title: str, subtitle: str, sections: list[tuple[str, list[str]]]) -> None:
     if not title and not sections:
         st.write("No TY plan text was returned.")
@@ -81,12 +100,7 @@ def render_generated_plan(answer: str) -> None:
 
 
 def render_plan_preview(answer: str) -> None:
-    title, subtitle, section_map = plan_sections_map(answer)
-    preview_sections: list[tuple[str, list[str]]] = []
-    for heading in ("programme overview", "rationale", "aims"):
-        paragraphs = section_map.get(heading)
-        if paragraphs:
-            preview_sections.append((heading.title() if heading != "aims" else "Aims", paragraphs))
+    title, subtitle, preview_sections = preview_plan_sections(answer)
     render_plan_sections(title, subtitle, preview_sections)
 
 
@@ -451,6 +465,41 @@ def resolve_reportlab_fonts():
     return None
 
 
+def validate_pdf_bytes(pdf_bytes: bytes) -> bytes:
+    if not pdf_bytes.startswith(b"%PDF-"):
+        raise RuntimeError("PDF export did not produce a valid PDF header.")
+    if b"%%EOF" not in pdf_bytes[-2048:]:
+        raise RuntimeError("PDF export did not produce a complete PDF trailer.")
+
+    pdfinfo_path = shutil.which("pdfinfo")
+    if pdfinfo_path:
+        GENERATED_PLANS_DIR.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(suffix=".pdf", dir=GENERATED_PLANS_DIR, delete=False) as handle:
+            temp_pdf_path = Path(handle.name)
+            handle.write(pdf_bytes)
+        try:
+            subprocess.run(
+                [pdfinfo_path, str(temp_pdf_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        finally:
+            temp_pdf_path.unlink(missing_ok=True)
+    return pdf_bytes
+
+
+def validate_docx_bytes(docx_bytes: bytes) -> bytes:
+    if not docx_bytes.startswith(b"PK"):
+        raise RuntimeError("DOCX export did not produce a valid ZIP container.")
+    with zipfile.ZipFile(BytesIO(docx_bytes)) as archive:
+        names = set(archive.namelist())
+        required = {"[Content_Types].xml", "word/document.xml"}
+        if not required.issubset(names):
+            raise RuntimeError("DOCX export is missing required document parts.")
+    return docx_bytes
+
+
 def build_pdf_fallback_bytes(full_plan_text: str, title: str, context: dict[str, str] | None = None) -> bytes:
     try:
         from reportlab.lib import colors
@@ -461,9 +510,8 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str, context: dict[str,
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
         from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
-    except Exception:
-        # Final fallback if reportlab is unavailable.
-        return (full_plan_text + "\n").encode("utf-8")
+    except Exception as exc:
+        raise RuntimeError("No PDF export backend is available locally.") from exc
 
     title_text, subtitle, sections = parse_plan_blocks(full_plan_text)
     language = infer_plan_language(title_text, subtitle)
@@ -587,7 +635,7 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str, context: dict[str,
                 story.append(Paragraph(fill_line, placeholder_style))
 
     doc.build(story)
-    return buffer.getvalue()
+    return validate_pdf_bytes(buffer.getvalue())
 
 
 def build_docx_bytes(full_plan_text: str, context: dict[str, str] | None = None) -> bytes:
@@ -704,7 +752,7 @@ def build_docx_bytes(full_plan_text: str, context: dict[str, str] | None = None)
 
     output = BytesIO()
     document.save(output)
-    return output.getvalue()
+    return validate_docx_bytes(output.getvalue())
 
 
 def build_pdf_bytes(full_plan_text: str, title: str, context: dict[str, str] | None = None) -> bytes:
@@ -733,7 +781,7 @@ def build_pdf_bytes(full_plan_text: str, title: str, context: dict[str, str] | N
                 text=True,
                 env=env,
             )
-            return pdf_path.read_bytes()
+            return validate_pdf_bytes(pdf_path.read_bytes())
         except Exception as exc:  # pragma: no cover
             print(f"[ty-plan-pdf] latex_fallback=true reason={exc.__class__.__name__}", flush=True)
             return build_pdf_fallback_bytes(full_plan_text, title, context=context)
@@ -864,7 +912,12 @@ def main() -> None:
         markdown_path, _text_path = save_generated_plan(full_plan_text, output_language)
         plan_title = full_plan_text.splitlines()[0].strip() if full_plan_text.splitlines() else "TY Annual Plan"
         prompt_context = parse_template_context(question)
-        pdf_bytes = build_pdf_bytes(full_plan_text, plan_title, context=prompt_context)
+        pdf_bytes: bytes | None = None
+        pdf_error = ""
+        try:
+            pdf_bytes = build_pdf_bytes(full_plan_text, plan_title, context=prompt_context)
+        except Exception as exc:  # pragma: no cover
+            pdf_error = str(exc)
         docx_bytes: bytes | None = None
         docx_error = ""
         try:
@@ -928,10 +981,18 @@ def main() -> None:
                     st.session_state["download_unlocked"] = True
                     st.rerun()
         else:
-            download_options = ["PDF", "Word (.docx)"] if docx_bytes else ["PDF", "Markdown (.md fallback)"]
-            default_index = 0 if st.session_state.get("download_format") == "PDF" else min(1, len(download_options) - 1)
+            if pdf_bytes and docx_bytes:
+                download_options = ["PDF", "Word (.docx)"]
+            elif pdf_bytes:
+                download_options = ["PDF", "Markdown (.md fallback)"]
+            elif docx_bytes:
+                download_options = ["Word (.docx)", "Markdown (.md fallback)"]
+            else:
+                download_options = ["Markdown (.md fallback)"]
+            current_format = st.session_state.get("download_format", "PDF")
+            default_index = download_options.index(current_format) if current_format in download_options else 0
             download_format = st.selectbox("Choose format:", download_options, index=default_index, key="download_format")
-            if download_format == "PDF":
+            if download_format == "PDF" and pdf_bytes:
                 pdf_path = save_export_file(pdf_bytes, output_language, "pdf", "pdf")
                 st.caption(
                     "PDF export is generated directly from the full plan shown on screen."
@@ -942,7 +1003,7 @@ def main() -> None:
                     file_name=pdf_path.name,
                     mime="application/pdf",
                 )
-            elif download_format == "Word (.docx)":
+            elif download_format == "Word (.docx)" and docx_bytes:
                 docx_path = save_export_file(docx_bytes or b"", output_language, "docx", "docx")
                 st.caption(
                     "Word export preserves the title and section hierarchy for editing."
@@ -956,11 +1017,18 @@ def main() -> None:
             else:
                 markdown_bytes = markdown_path.read_bytes()
                 markdown_export_path = save_export_file(markdown_bytes, output_language, "markdown", "md")
-                st.caption(
-                    "Word export is temporarily unavailable, so the editable fallback is Markdown."
-                )
+                fallback_reasons = []
+                if pdf_error:
+                    fallback_reasons.append("PDF export is temporarily unavailable for this session.")
                 if docx_error:
-                    st.caption("Word export fallback is active for this session.")
+                    fallback_reasons.append("Word export is temporarily unavailable for this session.")
+                if fallback_reasons:
+                    for fallback_reason in fallback_reasons:
+                        st.caption(fallback_reason)
+                else:
+                    st.caption(
+                        "An editable Markdown fallback is available for this session."
+                    )
                 st.download_button(
                     "Download plan",
                     data=markdown_bytes,

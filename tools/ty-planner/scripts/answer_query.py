@@ -62,6 +62,15 @@ IRISH_VALUE_MAP = {
     "student": "scoláire",
     "and": "agus",
     "one day a week": "lá amháin sa tseachtain",
+    "one day per week": "lá amháin sa tseachtain",
+    "1 day a week": "lá amháin sa tseachtain",
+    "1 day per week": "lá amháin sa tseachtain",
+    "weekly": "gach seachtain",
+    "fridays": "Dé hAoine",
+    "friday": "Dé hAoine",
+    "irish-medium": "lán-Ghaeilge",
+    "gaelic": "lán-Ghaeilge",
+    "catholic": "Caitliceach",
     "two-week block in january": "bloc coicíse i mí Eanáir",
     "two week block in january": "bloc coicíse i mí Eanáir",
 }
@@ -237,9 +246,13 @@ def requested_output_language(value: str) -> str:
     lowered = value.strip().lower()
     if not lowered:
         return ""
-    if any(term in lowered for term in ("irish", "gaeilge", "as gaeilge", "i ngaeilge")):
+    if lowered in {"ga", "gaeilge", "gaelic"}:
         return "ga"
-    if "english" in lowered or lowered == "en":
+    if any(term in lowered for term in ("irish", "gaeilge", "as gaeilge", "i ngaeilge", "gaelic")):
+        return "ga"
+    if lowered in {"en", "english", "béarla", "bearla"}:
+        return "en"
+    if "english" in lowered:
         return "en"
     return ""
 
@@ -410,6 +423,9 @@ def normalise_display_field(key: str, value: str, output_language: str) -> str:
     if key in {"school_name", "ty_coordinator"}:
         return normalise_school_display_name(value)
 
+    if key == "work_experience":
+        return normalise_work_experience(value, output_language)
+
     if output_language == "ga" and key in {"priorities", "work_experience", "school_type", "school_ethos", "additional_context"}:
         value = translate_value_for_irish(value)
 
@@ -431,6 +447,23 @@ def translate_value_for_irish(value: str) -> str:
     for source, target in sorted(IRISH_VALUE_MAP.items(), key=lambda item: len(item[0]), reverse=True):
         translated = re.sub(rf"\b{re.escape(source)}\b", target, translated, flags=re.IGNORECASE)
     return translated
+
+
+def normalise_work_experience(value: str, output_language: str) -> str:
+    compact = re.sub(r"\s+", " ", value).strip()
+    lowered = compact.lower()
+
+    if re.fullmatch(r"(one|1)\s+day\s+(a|per)\s+week", lowered):
+        compact = "one day a week"
+    elif lowered in {"weekly", "every week"}:
+        compact = "weekly"
+    elif lowered in {"friday", "fridays", "every friday"}:
+        compact = "Fridays"
+
+    if output_language == "ga":
+        compact = translate_value_for_irish(compact)
+
+    return compact
 
 
 def normalise_cohort_size(value: str, output_language: str) -> str:
@@ -499,7 +532,7 @@ def detect_context_signals(context: dict[str, str]) -> set[str]:
             "paroiste",
         ),
         "deis": ("deis",),
-        "gaelscoil": ("gaelscoil", "gaelcholáiste", "gaelcholaiste", "irish-medium", "gaeilge"),
+        "gaelscoil": ("gaelscoil", "gaelcholáiste", "gaelcholaiste", "irish-medium", "gaeilge", "gaelic"),
         "catholic_ethos": ("catholic", "faith", "christian", "religious", "gospel", "parish", "caitliceach", "creideamh"),
         "inclusion_context": ("additional needs", "sen", "inclusion", "attendance", "engagement", "cuimsiú", "cuimsiu", "riachtanais"),
         "gaisce": ("gaisce",),

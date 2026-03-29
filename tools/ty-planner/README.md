@@ -34,6 +34,24 @@ source .venv/bin/activate
 python -m streamlit run app/streamlit_app.py
 ```
 
+## Running the hardening checks
+
+Run the local planner test pass before pushing changes:
+
+```bash
+source .venv/bin/activate
+python -m unittest discover -s tools/ty-planner/tests -v
+```
+
+This test pass covers:
+
+- output-language selection across English and Irish variants
+- school-name and structured-input normalisation
+- preview slicing for English and Irish plans
+- DOCX structural generation
+- PDF generation and validity checks
+- common context combinations such as DEIS, rural context, Catholic ethos, and work-experience timing variants
+
 ## Outputs
 
 - generated plans are written to `outputs/generated_plans/`

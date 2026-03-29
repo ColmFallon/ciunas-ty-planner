@@ -23,6 +23,7 @@ SCRIPTS_DIR = ROOT / "scripts"
 GENERATED_PLANS_DIR = ROOT / "outputs" / "generated_plans"
 LEADS_DIR = ROOT / "outputs" / "leads"
 SHOW_DOCX_DIAGNOSTIC = False
+SHOW_PDF_DIAGNOSTIC = True
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -74,6 +75,19 @@ def preview_plan_sections(answer: str) -> tuple[str, str, list[tuple[str, list[s
         if not preview_aliases:
             break
     return title, subtitle, preview_sections
+
+
+def describe_pdf_runtime_support() -> tuple[bool, str]:
+    try:
+        from reportlab.lib.pagesizes import A4  # noqa: F401
+        from reportlab.platypus import SimpleDocTemplate  # noqa: F401
+
+        return True, "ReportLab backend available."
+    except Exception as exc:
+        lualatex_path = shutil.which("lualatex")
+        if lualatex_path:
+            return True, f"LuaLaTeX backend available at {lualatex_path}."
+        return False, f"ReportLab import failed: {exc.__class__.__name__}: {exc}"
 
 
 def render_plan_sections(title: str, subtitle: str, sections: list[tuple[str, list[str]]]) -> None:
@@ -755,10 +769,10 @@ def build_docx_bytes(full_plan_text: str, context: dict[str, str] | None = None)
     return validate_docx_bytes(output.getvalue())
 
 
-def build_pdf_bytes(full_plan_text: str, title: str, context: dict[str, str] | None = None) -> bytes:
+def build_pdf_with_lualatex(full_plan_text: str, context: dict[str, str] | None = None) -> bytes:
     lualatex_path = shutil.which("lualatex")
     if not lualatex_path:
-        return build_pdf_fallback_bytes(full_plan_text, title, context=context)
+        raise RuntimeError("LuaLaTeX is not installed in the current environment.")
 
     latex_source = build_plan_latex(full_plan_text, context=context)
     with tempfile.TemporaryDirectory(prefix="ty_plan_pdf_", dir=GENERATED_PLANS_DIR) as temp_dir:
@@ -768,23 +782,41 @@ def build_pdf_bytes(full_plan_text: str, title: str, context: dict[str, str] | N
         tex_cache_dir = temp_path / ".texlive-cache"
         tex_cache_dir.mkdir(exist_ok=True)
         tex_path.write_text(latex_source, encoding="utf-8")
-        try:
-            env = dict(os.environ)
-            env.setdefault("TEXMFCACHE", str(tex_cache_dir))
-            env.setdefault("TEXMFVAR", str(tex_cache_dir))
-            env.setdefault("HOME", str(temp_path))
-            subprocess.run(
-                [lualatex_path, "-interaction=nonstopmode", "-halt-on-error", tex_path.name],
-                cwd=temp_path,
-                check=True,
-                capture_output=True,
-                text=True,
-                env=env,
-            )
-            return validate_pdf_bytes(pdf_path.read_bytes())
-        except Exception as exc:  # pragma: no cover
-            print(f"[ty-plan-pdf] latex_fallback=true reason={exc.__class__.__name__}", flush=True)
-            return build_pdf_fallback_bytes(full_plan_text, title, context=context)
+        env = dict(os.environ)
+        env.setdefault("TEXMFCACHE", str(tex_cache_dir))
+        env.setdefault("TEXMFVAR", str(tex_cache_dir))
+        env.setdefault("HOME", str(temp_path))
+        subprocess.run(
+            [lualatex_path, "-interaction=nonstopmode", "-halt-on-error", tex_path.name],
+            cwd=temp_path,
+            check=True,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        return validate_pdf_bytes(pdf_path.read_bytes())
+
+
+def build_pdf_bytes(full_plan_text: str, title: str, context: dict[str, str] | None = None) -> bytes:
+    backend_errors: list[str] = []
+
+    try:
+        pdf_bytes = build_pdf_fallback_bytes(full_plan_text, title, context=context)
+        print("[ty-plan-pdf] backend=reportlab status=ok", flush=True)
+        return pdf_bytes
+    except Exception as exc:
+        backend_errors.append(f"ReportLab backend failed: {exc}")
+        print(f"[ty-plan-pdf] backend=reportlab status=failed reason={exc.__class__.__name__}", flush=True)
+
+    try:
+        pdf_bytes = build_pdf_with_lualatex(full_plan_text, context=context)
+        print("[ty-plan-pdf] backend=lualatex status=ok", flush=True)
+        return pdf_bytes
+    except Exception as exc:
+        backend_errors.append(f"LuaLaTeX backend failed: {exc}")
+        print(f"[ty-plan-pdf] backend=lualatex status=failed reason={exc.__class__.__name__}", flush=True)
+
+    raise RuntimeError(" | ".join(backend_errors))
 
 
 def main() -> None:
@@ -933,6 +965,15 @@ def main() -> None:
         st.caption("The downloadable version is formatted and ready to edit and share.")
         st.caption("Includes a clean layout suitable for school use.")
         st.caption(f"Export source length: {export_char_count} characters.")
+        pdf_runtime_available, pdf_runtime_detail = describe_pdf_runtime_support()
+        if SHOW_PDF_DIAGNOSTIC:
+            st.caption(
+                f"Temporary diagnostic: PDF runtime support is {'available' if pdf_runtime_available else 'unavailable'}."
+            )
+            if pdf_runtime_detail:
+                st.caption(f"Temporary diagnostic: PDF runtime detail: {pdf_runtime_detail}")
+            if pdf_error:
+                st.caption(f"Temporary diagnostic: PDF unavailable reason: {pdf_error}")
         if SHOW_DOCX_DIAGNOSTIC:
             docx_runtime_available = bool(docx_bytes)
             st.caption(

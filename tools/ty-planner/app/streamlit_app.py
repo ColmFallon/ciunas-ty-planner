@@ -24,7 +24,7 @@ SHOW_DOCX_DIAGNOSTIC = False
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from answer_query import answer_question, parse_template_context  # noqa: E402
+from answer_query import answer_question, normalise_template_context, parse_template_context, requested_output_language  # noqa: E402
 
 
 def split_layer_prefix(text: str) -> tuple[str | None, str]:
@@ -131,9 +131,13 @@ def build_tailored_plan_prompt(
 
 
 def infer_output_language(answer_mode: str, prompt: str) -> str:
+    context = parse_template_context(prompt)
+    explicit_language = requested_output_language(context.get("language", ""))
+    if explicit_language:
+        return explicit_language
     lowered_prompt = prompt.lower()
     if answer_mode.endswith("_ga") or any(
-        term in lowered_prompt for term in ("irish", "gaeilge", "as gaeilge", "i ngaeilge", "idirbhliana")
+        term in lowered_prompt for term in ("irish", "gaeilge", "as gaeilge", "i ngaeilge")
     ):
         return "ga"
     return "en"
@@ -257,7 +261,7 @@ def build_cover_page_text(language: str) -> tuple[str, str, str, str]:
 
 def build_title_block_values(language: str, context: dict[str, str] | None = None) -> tuple[str, str, bool]:
     _, _, coordinator_label, _ = build_cover_page_text(language)
-    context = context or {}
+    context = normalise_template_context(context or {}, language)
     school_name = str(context.get("school_name", "")).strip()
     ty_coordinator = str(context.get("ty_coordinator", "")).strip()
 
@@ -279,8 +283,8 @@ def needs_fill_lines(heading: str, language: str) -> bool:
 
 def export_fill_lines() -> list[str]:
     return [
-        "• __________________________",
-        "• __________________________",
+        "____________________________",
+        "____________________________",
     ]
 
 
@@ -394,128 +398,130 @@ def build_plan_latex(full_plan_text: str, context: dict[str, str] | None = None)
 
 
 def build_pdf_fallback_bytes(full_plan_text: str, title: str) -> bytes:
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_CENTER
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
+        import reportlab
+    except Exception:
+        # Final fallback if reportlab is unavailable.
+        return (full_plan_text + "\n").encode("utf-8")
+
+    from pathlib import Path as _Path
+
     title_text, subtitle, sections = parse_plan_blocks(full_plan_text)
     language = infer_plan_language(title_text, subtitle)
     subtitle = standardised_export_subtitle(language)
     title_line_one, title_line_two, _coordinator_label, cover_note = build_cover_page_text(language)
 
-    operations: list[list[str]] = []
-    current_ops: list[str] = ["BT"]
-    y_position = 790.0
-    left_margin = 58.0
-    page_floor = 72.0
+    fonts_dir = _Path(reportlab.__file__).resolve().parent / "fonts"
+    regular_font_path = fonts_dir / "Vera.ttf"
+    bold_font_path = fonts_dir / "VeraBd.ttf"
+    italic_font_path = fonts_dir / "VeraIt.ttf"
+    regular_font = "Helvetica"
+    bold_font = "Helvetica-Bold"
+    italic_font = "Helvetica-Oblique"
+    if regular_font_path.exists() and bold_font_path.exists() and italic_font_path.exists():
+        pdfmetrics.registerFont(TTFont("TYVera", str(regular_font_path)))
+        pdfmetrics.registerFont(TTFont("TYVeraBold", str(bold_font_path)))
+        pdfmetrics.registerFont(TTFont("TYVeraItalic", str(italic_font_path)))
+        regular_font = "TYVera"
+        bold_font = "TYVeraBold"
+        italic_font = "TYVeraItalic"
 
-    def escape_pdf_text(text: str) -> str:
-        return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=24 * mm,
+        rightMargin=24 * mm,
+        topMargin=24 * mm,
+        bottomMargin=24 * mm,
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "TYTitle",
+        parent=styles["Title"],
+        fontName=bold_font,
+        fontSize=22,
+        leading=28,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor("#203247"),
+        spaceAfter=4,
+    )
+    subtitle_style = ParagraphStyle(
+        "TYSubtitle",
+        parent=styles["Normal"],
+        fontName=italic_font,
+        fontSize=12,
+        leading=16,
+        alignment=TA_CENTER,
+        spaceAfter=18,
+    )
+    cover_note_style = ParagraphStyle(
+        "TYCoverNote",
+        parent=styles["Normal"],
+        fontName=italic_font,
+        fontSize=11,
+        leading=15,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor("#4A5560"),
+        spaceAfter=10,
+    )
+    heading_style = ParagraphStyle(
+        "TYHeading",
+        parent=styles["Heading1"],
+        fontName=bold_font,
+        fontSize=15,
+        leading=20,
+        textColor=colors.HexColor("#203247"),
+        spaceBefore=12,
+        spaceAfter=6,
+    )
+    body_style = ParagraphStyle(
+        "TYBody",
+        parent=styles["BodyText"],
+        fontName=regular_font,
+        fontSize=11,
+        leading=15,
+        spaceAfter=8,
+    )
+    placeholder_style = ParagraphStyle(
+        "TYPlaceholder",
+        parent=body_style,
+        fontName=italic_font,
+        textColor=colors.HexColor("#68707A"),
+    )
 
-    def wrap_text(text: str, max_chars: int) -> list[str]:
-        words = text.split()
-        if not words:
-            return [""]
-        lines: list[str] = []
-        current = words[0]
-        for word in words[1:]:
-            candidate = f"{current} {word}"
-            if len(candidate) <= max_chars:
-                current = candidate
-            else:
-                lines.append(current)
-                current = word
-        lines.append(current)
-        return lines
-
-    def new_page() -> None:
-        nonlocal current_ops, y_position
-        current_ops.append("ET")
-        operations.append(current_ops)
-        current_ops = ["BT"]
-        y_position = 790.0
-
-    def ensure_space(height_needed: float) -> None:
-        if y_position - height_needed < page_floor:
-            new_page()
-
-    def write_line(text: str, font: str, size: int, x: float, leading: float) -> None:
-        nonlocal y_position
-        ensure_space(leading)
-        current_ops.append(f"/{font} {size} Tf")
-        current_ops.append(f"1 0 0 1 {x:.2f} {y_position:.2f} Tm")
-        current_ops.append(f"({escape_pdf_text(text)}) Tj")
-        y_position -= leading
-
-    def write_paragraph(text: str, font: str = "F1", size: int = 11, max_chars: int = 84, leading: float = 15.0) -> None:
-        nonlocal y_position
-        for line in wrap_text(text, max_chars):
-            write_line(line, font, size, left_margin, leading)
-        y_position -= 4.0
-
-    write_line(title_line_one, "F2", 22, 150.0, 30.0)
-    write_line(title_line_two, "F2", 22, 165.0, 34.0)
-    write_line(subtitle, "F3", 12, 190.0, 28.0)
-    y_position -= 16.0
-    write_paragraph(cover_note, font="F3", size=11, max_chars=60, leading=16.0)
-    new_page()
+    story = [
+        Spacer(1, 38),
+        Paragraph(title_line_one, title_style),
+        Paragraph(title_line_two, title_style),
+        Spacer(1, 10),
+        Paragraph(subtitle, subtitle_style),
+        Spacer(1, 10),
+        Paragraph(cover_note, cover_note_style),
+        PageBreak(),
+    ]
 
     for heading, paragraphs in sections:
         if heading:
-            write_line(heading, "F2", 15, left_margin, 22.0)
+            story.append(Paragraph(heading, heading_style))
         for paragraph in paragraphs:
             if paragraph:
-                write_paragraph(paragraph)
+                style = placeholder_style if set(paragraph) <= {"_"} else body_style
+                story.append(Paragraph(paragraph.replace("\n", "<br/>"), style))
         if heading and needs_fill_lines(heading, language):
             for fill_line in export_fill_lines():
-                write_paragraph(fill_line.replace("• ", "", 1), max_chars=60)
+                story.append(Paragraph(fill_line, placeholder_style))
 
-    current_ops.append("ET")
-    operations.append(current_ops)
-
-    objects: list[bytes] = []
-
-    def add_object(content: bytes) -> int:
-        objects.append(content)
-        return len(objects)
-
-    font_regular_id = add_object(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
-    font_bold_id = add_object(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>")
-    font_italic_id = add_object(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>")
-    page_ids: list[int] = []
-    content_ids: list[int] = []
-
-    for ops in operations:
-        stream = "\n".join(ops).encode("latin-1", errors="replace")
-        content_id = add_object(b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"\nendstream")
-        content_ids.append(content_id)
-        page_ids.append(0)
-
-    pages_id = add_object(b"<< /Type /Pages /Kids [] /Count 0 >>")
-    for idx, content_id in enumerate(content_ids):
-        page_obj = (
-            f"<< /Type /Page /Parent {pages_id} 0 R /MediaBox [0 0 595 842] "
-            f"/Resources << /Font << /F1 {font_regular_id} 0 R /F2 {font_bold_id} 0 R /F3 {font_italic_id} 0 R >> >> "
-            f"/Contents {content_id} 0 R >>"
-        ).encode("ascii")
-        page_ids[idx] = add_object(page_obj)
-
-    kids = " ".join(f"{page_id} 0 R" for page_id in page_ids).encode("ascii")
-    objects[pages_id - 1] = b"<< /Type /Pages /Kids [" + kids + b"] /Count " + str(len(page_ids)).encode("ascii") + b" >>"
-    catalog_id = add_object(f"<< /Type /Catalog /Pages {pages_id} 0 R >>".encode("ascii"))
-    pdf = bytearray(b"%PDF-1.4\n")
-    offsets = [0]
-    for index, obj in enumerate(objects, start=1):
-        offsets.append(len(pdf))
-        pdf.extend(f"{index} 0 obj\n".encode("ascii"))
-        pdf.extend(obj)
-        pdf.extend(b"\nendobj\n")
-
-    xref_start = len(pdf)
-    pdf.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
-    pdf.extend(b"0000000000 65535 f \n")
-    for offset in offsets[1:]:
-        pdf.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
-    pdf.extend(
-        f"trailer << /Size {len(objects) + 1} /Root {catalog_id} 0 R >>\nstartxref\n{xref_start}\n%%EOF".encode("ascii")
-    )
-    return bytes(pdf)
+    doc.build(story)
+    return buffer.getvalue()
 
 
 def build_docx_bytes(full_plan_text: str, context: dict[str, str] | None = None) -> bytes:

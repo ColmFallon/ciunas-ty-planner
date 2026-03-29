@@ -48,6 +48,24 @@ FRAMEWORK_KEYWORDS = {
 
 DEFAULT_OPENAI_MODEL = "gpt-5.4"
 
+IRISH_VALUE_MAP = {
+    "wellbeing": "folláine",
+    "leadership": "ceannaireacht",
+    "attendance": "tinreamh",
+    "enterprise": "fiontraíocht",
+    "student leadership": "ceannaireacht scoláirí",
+    "financial literacy": "litearthacht airgeadais",
+    "road safety": "sábháilteacht ar bhóithre",
+    "deis school": "scoil DEIS",
+    "school": "scoil",
+    "students": "scoláire",
+    "student": "scoláire",
+    "and": "agus",
+    "one day a week": "lá amháin sa tseachtain",
+    "two-week block in january": "bloc coicíse i mí Eanáir",
+    "two week block in january": "bloc coicíse i mí Eanáir",
+}
+
 
 EN_TEMPLATE_SECTIONS = [
     (
@@ -194,6 +212,10 @@ GA_TEMPLATE_SECTIONS = [
 
 
 def detect_template_language(question: str) -> str:
+    context = parse_template_context(question)
+    explicit_language = requested_output_language(context.get("language", ""))
+    if explicit_language:
+        return explicit_language
     lowered = question.lower()
     if any(
         term in lowered
@@ -211,6 +233,17 @@ def detect_template_language(question: str) -> str:
     return "en"
 
 
+def requested_output_language(value: str) -> str:
+    lowered = value.strip().lower()
+    if not lowered:
+        return ""
+    if any(term in lowered for term in ("irish", "gaeilge", "as gaeilge", "i ngaeilge")):
+        return "ga"
+    if "english" in lowered or lowered == "en":
+        return "en"
+    return ""
+
+
 def is_template_generation_request(question: str) -> bool:
     lowered = question.lower()
     has_action = any(term in lowered for term in ("create", "generate", "cruthaigh"))
@@ -226,7 +259,7 @@ def is_template_generation_request(question: str) -> bool:
 
 
 def infer_school_context(question: str, language: str) -> str:
-    context = parse_template_context(question)
+    context = normalise_template_context(parse_template_context(question), language)
     school_name = tidy_context_phrase(context.get("school_name", ""))
     cohort_size = tidy_context_phrase(context.get("cohort_size", ""))
     school_type = tidy_context_phrase(context.get("school_type", ""))
@@ -316,6 +349,55 @@ def parse_template_context(question: str) -> dict[str, str]:
     return context
 
 
+def preserve_named_style(value: str) -> str:
+    cleaned = re.sub(r"\s+", " ", value.strip())
+    replacements = {
+        "deis": "DEIS",
+        "gaelscoil": "Gaelscoil",
+        "gaelcholaiste": "Gaelcholáiste",
+        "gaelcholáiste": "Gaelcholáiste",
+        "etb": "ETB",
+        "rsa": "RSA",
+    }
+    for source, target in replacements.items():
+        cleaned = re.sub(rf"\b{re.escape(source)}\b", target, cleaned, flags=re.IGNORECASE)
+    return cleaned
+
+
+def translate_value_for_irish(value: str) -> str:
+    translated = value
+    for source, target in sorted(IRISH_VALUE_MAP.items(), key=lambda item: len(item[0]), reverse=True):
+        translated = re.sub(rf"\b{re.escape(source)}\b", target, translated, flags=re.IGNORECASE)
+    return translated
+
+
+def normalise_cohort_size(value: str, output_language: str) -> str:
+    compact = re.sub(r"\s+", " ", value).strip()
+    if output_language == "ga":
+        compact = re.sub(r"\bstudents\b", "scoláire", compact, flags=re.IGNORECASE)
+        compact = re.sub(r"\bpupils\b", "scoláire", compact, flags=re.IGNORECASE)
+    return compact
+
+
+def normalise_template_context(context: dict[str, str], output_language: str) -> dict[str, str]:
+    normalised: dict[str, str] = {}
+    for key, raw_value in context.items():
+        value = preserve_named_style(raw_value)
+        value = re.sub(r"\s+", " ", value).strip()
+        if output_language == "ga" and key in {"priorities", "work_experience", "school_type", "school_ethos"}:
+            value = translate_value_for_irish(value)
+        if key == "cohort_size":
+            value = normalise_cohort_size(value, output_language)
+        if key == "language":
+            explicit = requested_output_language(value)
+            if explicit == "ga":
+                value = "Irish"
+            elif explicit == "en":
+                value = "English"
+        normalised[key] = value
+    return normalised
+
+
 def context_mentions_ethos(additional_context: str) -> bool:
     lowered = additional_context.lower()
     ethos_terms = (
@@ -382,6 +464,7 @@ def detect_context_signals(context: dict[str, str]) -> set[str]:
 
 
 def build_context_plan(context: dict[str, str], language: str) -> dict[str, list[str]]:
+    context = normalise_template_context(context, language)
     school_name = tidy_context_phrase(context.get("school_name", ""))
     cohort_size = tidy_context_phrase(context.get("cohort_size", ""))
     priorities = tidy_context_phrase(context.get("priorities", ""))
@@ -664,7 +747,7 @@ def tailor_section_body(heading: str, body: str, context: dict[str, str], langua
 def build_template_plan(question: str, language: str) -> str:
     sections = GA_TEMPLATE_SECTIONS if language == "ga" else EN_TEMPLATE_SECTIONS
     context_line = infer_school_context(question, language)
-    context = parse_template_context(question)
+    context = normalise_template_context(parse_template_context(question), language)
 
     if language == "ga":
         title = "Plean Bliantúil na hIdirbhliana"
@@ -775,7 +858,7 @@ def build_openai_template_instructions(language: str) -> str:
 
 
 def build_openai_template_prompt(question: str, language: str) -> str:
-    context = parse_template_context(question)
+    context = normalise_template_context(parse_template_context(question), language)
     school_name = context.get("school_name", "Not specified")
     cohort_size = context.get("cohort_size", "Not specified")
     school_type = context.get("school_type", "Not specified")
@@ -784,7 +867,7 @@ def build_openai_template_prompt(question: str, language: str) -> str:
     existing_modules = context.get("existing_modules", "Not specified")
     work_experience = context.get("work_experience", "Not specified")
     additional_context = context.get("additional_context", "Not specified")
-    language_label = "Irish" if language == "ga" else context.get("language", "English")
+    language_label = "Irish" if language == "ga" else "English"
 
     if language == "ga":
         return (

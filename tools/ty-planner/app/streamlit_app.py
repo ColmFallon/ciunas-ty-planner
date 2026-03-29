@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = ROOT / "scripts"
 GENERATED_PLANS_DIR = ROOT / "outputs" / "generated_plans"
 LEADS_DIR = ROOT / "outputs" / "leads"
-SHOW_DOCX_DIAGNOSTIC = True  # Temporary deployment diagnostic; remove after live verification.
+SHOW_DOCX_DIAGNOSTIC = False
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -41,23 +41,46 @@ def render_source_layer_caption() -> None:
     )
 
 
-def render_generated_plan(answer: str) -> None:
-    blocks = [block.strip() for block in answer.split("\n\n") if block.strip()]
-    if not blocks:
+def plan_sections_map(full_plan_text: str) -> tuple[str, str, dict[str, list[str]]]:
+    title, subtitle, sections = parse_plan_blocks(full_plan_text)
+    section_map: dict[str, list[str]] = {}
+    for heading, paragraphs in sections:
+        if heading.strip():
+            section_map[heading.strip().lower()] = paragraphs
+    return title, subtitle, section_map
+
+
+def render_plan_sections(title: str, subtitle: str, sections: list[tuple[str, list[str]]]) -> None:
+    if not title and not sections:
         st.write("No TY plan text was returned.")
         return
 
-    st.markdown(f"### {blocks[0]}")
-    if len(blocks) > 1:
-        st.caption(blocks[1])
+    if title:
+        st.markdown(f"### {title}")
+    if subtitle:
+        st.caption(subtitle)
 
-    for block in blocks[2:]:
-        lines = [line.strip() for line in block.splitlines() if line.strip()]
-        if len(lines) >= 2:
-            st.markdown(f"#### {lines[0]}")
-            st.write("\n".join(lines[1:]))
-        else:
-            st.write(block)
+    for heading, paragraphs in sections:
+        if heading:
+            st.markdown(f"#### {heading}")
+        for paragraph in paragraphs:
+            if paragraph:
+                st.write(paragraph)
+
+
+def render_generated_plan(answer: str) -> None:
+    title, subtitle, sections = parse_plan_blocks(answer)
+    render_plan_sections(title, subtitle, sections)
+
+
+def render_plan_preview(answer: str) -> None:
+    title, subtitle, section_map = plan_sections_map(answer)
+    preview_sections: list[tuple[str, list[str]]] = []
+    for heading in ("programme overview", "rationale", "aims"):
+        paragraphs = section_map.get(heading)
+        if paragraphs:
+            preview_sections.append((heading.title() if heading != "aims" else "Aims", paragraphs))
+    render_plan_sections(title, subtitle, preview_sections)
 
 
 def build_download_prompt(user_input: str) -> str:
@@ -326,27 +349,29 @@ def build_plan_latex(full_plan_text: str, context: dict[str, str] | None = None)
 
     return (
         "\\documentclass[11pt]{article}\n"
-        "\\usepackage[a4paper,margin=22mm,top=24mm,bottom=24mm]{geometry}\n"
+        "\\usepackage[a4paper,margin=24mm,top=26mm,bottom=26mm]{geometry}\n"
         "\\usepackage{fontspec}\n"
         "\\usepackage{microtype}\n"
         "\\usepackage{titlesec}\n"
         "\\usepackage{setspace}\n"
         "\\usepackage{parskip}\n"
         "\\usepackage{ragged2e}\n"
+        "\\usepackage{xcolor}\n"
         "\\usepackage[hidelinks]{hyperref}\n"
         "\\IfFontExistsTF{TeX Gyre Pagella}{\\setmainfont{TeX Gyre Pagella}}{\\IfFontExistsTF{Times New Roman}{\\setmainfont{Times New Roman}}{\\setmainfont{Latin Modern Roman}}}\n"
         "\\IfFontExistsTF{TeX Gyre Heros}{\\setsansfont{TeX Gyre Heros}}{\\IfFontExistsTF{Helvetica Neue}{\\setsansfont{Helvetica Neue}}{\\setsansfont{Latin Modern Sans}}}\n"
-        "\\setstretch{1.14}\n"
-        "\\setlength{\\parskip}{0.98em}\n"
+        "\\setstretch{1.16}\n"
+        "\\setlength{\\parskip}{0.85em}\n"
         "\\setlength{\\parindent}{0pt}\n"
-        "\\titleformat{\\section}{\\LARGE\\bfseries\\sffamily}{}{0pt}{}\n"
-        "\\titlespacing*{\\section}{0pt}{2.0em}{0.65em}\n"
+        "\\definecolor{TYHeading}{HTML}{203247}\n"
+        "\\titleformat{\\section}{\\Large\\bfseries\\sffamily\\color{TYHeading}}{}{0pt}{}\n"
+        "\\titlespacing*{\\section}{0pt}{1.8em}{0.55em}\n"
         "\\raggedbottom\n"
         "\\pagestyle{plain}\n"
         "\\begin{document}\n"
         "\\thispagestyle{empty}\n"
         "\\begin{center}\n"
-        "\\vspace*{2.0cm}\n"
+        "\\vspace*{1.9cm}\n"
         f"{{\\fontsize{{22pt}}{{28pt}}\\selectfont\\bfseries\\sffamily {escaped_title_line_one}\\par}}\n"
         "\\vspace{0.35em}\n"
         f"{{\\fontsize{{22pt}}{{28pt}}\\selectfont\\bfseries\\sffamily {escaped_title_line_two}\\par}}\n"
@@ -359,7 +384,7 @@ def build_plan_latex(full_plan_text: str, context: dict[str, str] | None = None)
         "\\vspace{1.4em}\n"
         f"{{\\normalsize\\itshape {escaped_cover_note}\\par}}\n"
         "\\vfill\n"
-        "\\rule{0.82\\textwidth}{0.5pt}\\par\n"
+        "\\rule{0.82\\textwidth}{0.6pt}\\par\n"
         "\\end{center}\n"
         "\\newpage\n"
         "\\RaggedRight\n"
@@ -369,26 +394,80 @@ def build_plan_latex(full_plan_text: str, context: dict[str, str] | None = None)
 
 
 def build_pdf_fallback_bytes(full_plan_text: str, title: str) -> bytes:
-    # Keep a minimal fallback so export remains reliable if LaTeX compilation is unavailable.
-    lines = [line.rstrip() for line in full_plan_text.splitlines()]
-    pages: list[list[str]] = []
-    current_page: list[str] = []
-    max_lines = 42
+    title_text, subtitle, sections = parse_plan_blocks(full_plan_text)
+    language = infer_plan_language(title_text, subtitle)
+    subtitle = standardised_export_subtitle(language)
+    title_line_one, title_line_two, _coordinator_label, cover_note = build_cover_page_text(language)
 
-    for line in lines:
-        if not line.strip():
-            wrapped = [""]
-        elif line.strip() == title:
-            wrapped = [line.strip()]
-        else:
-            wrapped = [line[i : i + 88] for i in range(0, len(line), 88)] or [""]
-        for wrapped_line in wrapped:
-            current_page.append(wrapped_line)
-            if len(current_page) >= max_lines:
-                pages.append(current_page)
-                current_page = []
-    if current_page or not pages:
-        pages.append(current_page or [""])
+    operations: list[list[str]] = []
+    current_ops: list[str] = ["BT"]
+    y_position = 790.0
+    left_margin = 58.0
+    page_floor = 72.0
+
+    def escape_pdf_text(text: str) -> str:
+        return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+    def wrap_text(text: str, max_chars: int) -> list[str]:
+        words = text.split()
+        if not words:
+            return [""]
+        lines: list[str] = []
+        current = words[0]
+        for word in words[1:]:
+            candidate = f"{current} {word}"
+            if len(candidate) <= max_chars:
+                current = candidate
+            else:
+                lines.append(current)
+                current = word
+        lines.append(current)
+        return lines
+
+    def new_page() -> None:
+        nonlocal current_ops, y_position
+        current_ops.append("ET")
+        operations.append(current_ops)
+        current_ops = ["BT"]
+        y_position = 790.0
+
+    def ensure_space(height_needed: float) -> None:
+        if y_position - height_needed < page_floor:
+            new_page()
+
+    def write_line(text: str, font: str, size: int, x: float, leading: float) -> None:
+        nonlocal y_position
+        ensure_space(leading)
+        current_ops.append(f"/{font} {size} Tf")
+        current_ops.append(f"1 0 0 1 {x:.2f} {y_position:.2f} Tm")
+        current_ops.append(f"({escape_pdf_text(text)}) Tj")
+        y_position -= leading
+
+    def write_paragraph(text: str, font: str = "F1", size: int = 11, max_chars: int = 84, leading: float = 15.0) -> None:
+        nonlocal y_position
+        for line in wrap_text(text, max_chars):
+            write_line(line, font, size, left_margin, leading)
+        y_position -= 4.0
+
+    write_line(title_line_one, "F2", 22, 150.0, 30.0)
+    write_line(title_line_two, "F2", 22, 165.0, 34.0)
+    write_line(subtitle, "F3", 12, 190.0, 28.0)
+    y_position -= 16.0
+    write_paragraph(cover_note, font="F3", size=11, max_chars=60, leading=16.0)
+    new_page()
+
+    for heading, paragraphs in sections:
+        if heading:
+            write_line(heading, "F2", 15, left_margin, 22.0)
+        for paragraph in paragraphs:
+            if paragraph:
+                write_paragraph(paragraph)
+        if heading and needs_fill_lines(heading, language):
+            for fill_line in export_fill_lines():
+                write_paragraph(fill_line.replace("• ", "", 1), max_chars=60)
+
+    current_ops.append("ET")
+    operations.append(current_ops)
 
     objects: list[bytes] = []
 
@@ -396,32 +475,14 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str) -> bytes:
         objects.append(content)
         return len(objects)
 
-    font_id = add_object(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+    font_regular_id = add_object(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+    font_bold_id = add_object(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>")
+    font_italic_id = add_object(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>")
     page_ids: list[int] = []
     content_ids: list[int] = []
 
-    for page in pages:
-        content_lines = ["BT", "/F1 12 Tf", "50 790 Td"]
-        first_line = True
-        for line in page:
-            stripped = line.strip()
-            if not stripped:
-                content_lines.append("0 -14 Td")
-                continue
-            if first_line and stripped == title:
-                content_lines.append("/F1 16 Tf")
-                escaped_title = stripped.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-                content_lines.append(f"({escaped_title}) Tj")
-                content_lines.append("/F1 12 Tf")
-                content_lines.append("0 -22 Td")
-                first_line = False
-                continue
-            escaped = stripped.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-            content_lines.append(f"({escaped}) Tj")
-            content_lines.append("0 -15 Td")
-            first_line = False
-        content_lines.append("ET")
-        stream = "\n".join(content_lines).encode("latin-1", errors="replace")
+    for ops in operations:
+        stream = "\n".join(ops).encode("latin-1", errors="replace")
         content_id = add_object(b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"\nendstream")
         content_ids.append(content_id)
         page_ids.append(0)
@@ -430,7 +491,8 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str) -> bytes:
     for idx, content_id in enumerate(content_ids):
         page_obj = (
             f"<< /Type /Page /Parent {pages_id} 0 R /MediaBox [0 0 595 842] "
-            f"/Resources << /Font << /F1 {font_id} 0 R >> >> /Contents {content_id} 0 R >>"
+            f"/Resources << /Font << /F1 {font_regular_id} 0 R /F2 {font_bold_id} 0 R /F3 {font_italic_id} 0 R >> >> "
+            f"/Contents {content_id} 0 R >>"
         ).encode("ascii")
         page_ids[idx] = add_object(page_obj)
 
@@ -711,9 +773,14 @@ def main() -> None:
         if not full_plan_text:
             st.error("Generator mode did not return a full TY plan, so export has been disabled for this response.")
             return
+        unlocked = st.session_state.get("download_unlocked", False)
         st.subheader("TY Annual Plan")
-        render_generated_plan(full_plan_text)
-        st.caption("You can download this plan or improve it further for your school.")
+        if unlocked:
+            render_generated_plan(full_plan_text)
+            st.caption("You can download this plan or improve it further for your school.")
+        else:
+            render_plan_preview(full_plan_text)
+            st.info("Continue to full plan by unlocking below.")
         output_language = infer_output_language(answer_mode, question)
         markdown_path, _text_path = save_generated_plan(full_plan_text, output_language)
         plan_title = full_plan_text.splitlines()[0].strip() if full_plan_text.splitlines() else "TY Annual Plan"
@@ -744,7 +811,7 @@ def main() -> None:
                     "Temporary diagnostic: DOCX unavailable reason: "
                     f"{docx_error or 'build_docx_bytes returned no content.'}"
                 )
-        if not st.session_state.get("download_unlocked"):
+        if not unlocked:
             with st.form("download_unlock_form", clear_on_submit=False):
                 lead_email = st.text_input(
                     "Email address",
@@ -780,7 +847,6 @@ def main() -> None:
                     st.session_state["lead_email"] = cleaned_email
                     st.session_state["lead_name"] = cleaned_name
                     st.session_state["download_unlocked"] = True
-                    st.success("Download unlocked. Thanks - your details have been saved.")
                     st.rerun()
         else:
             download_options = ["PDF", "Word (.docx)"] if docx_bytes else ["PDF", "Markdown (.md fallback)"]

@@ -46,7 +46,7 @@ FRAMEWORK_KEYWORDS = {
     "mindset",
 }
 
-DEFAULT_OPENAI_MODEL = "gpt-5.4"
+DEFAULT_OPENAI_MODEL = "gpt-5.4-mini"
 
 IRISH_VALUE_MAP = {
     "wellbeing": "folláine",
@@ -482,6 +482,54 @@ def normalise_template_context(context: dict[str, str], output_language: str) ->
     return normalised
 
 
+def coordinator_display_name(context: dict[str, str], coordinator_name: str | None, language: str) -> str:
+    explicit_name = normalise_school_display_name(coordinator_name or "")
+    if explicit_name:
+        return explicit_name
+    context_name = normalise_school_display_name(context.get("ty_coordinator", ""))
+    if context_name:
+        return context_name
+    return "TY Coordinator" if language == "en" else "Comhordaitheoir TY"
+
+
+def prepared_for_line(language: str, coordinator_name: str | None, context: dict[str, str]) -> str:
+    display_name = coordinator_display_name(context, coordinator_name, language)
+    if not display_name:
+        return ""
+    return f"Prepared for {display_name}" if language == "en" else f"Ullmhaithe do {display_name}"
+
+
+def inject_coordinator_context(question: str, coordinator_name: str | None) -> str:
+    cleaned_name = normalise_school_display_name(coordinator_name or "")
+    if not cleaned_name:
+        return question
+    if re.search(r"(?:TY Coordinator|Comhordaitheoir TY):", question, flags=re.IGNORECASE):
+        return question
+    return f"{question.rstrip()}\nTY Coordinator: {cleaned_name}"
+
+
+def prepend_prepared_for_line(answer: str, language: str, coordinator_name: str | None = None) -> str:
+    context = normalise_template_context(parse_template_context(answer), language)
+    prepared_line = prepared_for_line(language, coordinator_name, context)
+    if not prepared_line:
+        return answer
+    if prepared_line in answer:
+        return answer
+
+    lines = [line.rstrip() for line in answer.splitlines()]
+    non_empty = [line.strip() for line in lines if line.strip()]
+    if len(non_empty) < 2:
+        return answer
+
+    title = non_empty[0]
+    subtitle = non_empty[1]
+    title_block = f"{title}\n{subtitle}"
+    if answer.startswith(title_block):
+        remainder = answer[len(title_block) :].lstrip("\n")
+        return f"{title_block}\n\n{prepared_line}\n\n{remainder}".strip()
+    return f"{prepared_line}\n\n{answer}".strip()
+
+
 def context_mentions_ethos(additional_context: str) -> bool:
     lowered = additional_context.lower()
     ethos_terms = (
@@ -828,10 +876,11 @@ def tailor_section_body(heading: str, body: str, context: dict[str, str], langua
     return f"{body} {' '.join(additions)}"
 
 
-def build_template_plan(question: str, language: str) -> str:
+def build_template_plan(question: str, language: str, coordinator_name: str | None = None) -> str:
     sections = GA_TEMPLATE_SECTIONS if language == "ga" else EN_TEMPLATE_SECTIONS
     context_line = infer_school_context(question, language)
     context = normalise_template_context(parse_template_context(question), language)
+    prepared_line = prepared_for_line(language, coordinator_name, context)
 
     if language == "ga":
         title = "Plean Bliantúil na hIdirbhliana"
@@ -840,7 +889,10 @@ def build_template_plan(question: str, language: str) -> str:
         title = "Transition Year Annual Plan"
         subtitle = "September 2026 to May 2027"
 
-    parts = [title, subtitle, "", context_line]
+    parts = [title, subtitle]
+    if prepared_line:
+        parts.extend(["", prepared_line])
+    parts.extend(["", context_line])
     for heading, body in sections:
         parts.append("")
         parts.append(heading)
@@ -1050,7 +1102,7 @@ def validate_template_output(text: str, language: str) -> bool:
     return matched_sections >= required_matches
 
 
-def generate_template_plan_openai(question: str, language: str) -> tuple[str, str]:
+def generate_template_plan_openai(question: str, language: str, coordinator_name: str | None = None) -> tuple[str, str]:
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     model = os.getenv("OPENAI_MODEL", DEFAULT_OPENAI_MODEL).strip() or DEFAULT_OPENAI_MODEL
     if not api_key:
@@ -1096,7 +1148,7 @@ def generate_template_plan_openai(question: str, language: str) -> tuple[str, st
         f"[ty-plan-openai] attempted=true model={model} fallback=false result=openai_generation chars={len(output_text)}",
         flush=True,
     )
-    return output_text, "openai_generation"
+    return prepend_prepared_for_line(output_text, language, coordinator_name=coordinator_name), "openai_generation"
 
 
 def tokenize(text: str) -> list[str]:
@@ -1729,10 +1781,15 @@ def evidence_note(ranked: list[tuple[float, dict[str, object]]], mode: str) -> s
     return f"{layer_note}{weak_note}".strip()
 
 
-def answer_question(question: str) -> dict[str, object]:
+def answer_question(question: str, coordinator_name: str | None = None) -> dict[str, object]:
+    question = inject_coordinator_context(question, coordinator_name)
     if is_template_generation_request(question):
         language = detect_template_language(question)
-        openai_answer, generation_source = generate_template_plan_openai(question, language)
+        openai_answer, generation_source = generate_template_plan_openai(
+            question,
+            language,
+            coordinator_name=coordinator_name,
+        )
         if openai_answer:
             return {
                 "answer": openai_answer,
@@ -1749,7 +1806,7 @@ def answer_question(question: str) -> dict[str, object]:
                 "model_used": os.getenv("OPENAI_MODEL", DEFAULT_OPENAI_MODEL).strip() or DEFAULT_OPENAI_MODEL,
             }
 
-        local_answer = build_template_plan(question, language)
+        local_answer = build_template_plan(question, language, coordinator_name=coordinator_name)
         return {
             "answer": local_answer,
             "key_points": [],

@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 from datetime import datetime
 import hashlib
+import html
 from io import BytesIO
 import json
 import logging
@@ -105,6 +106,11 @@ def extract_preview_payload(answer: str) -> tuple[str, str, str, list[str]]:
                 break
 
     candidate_lines = line_items[start_index:]
+    intro_lines: list[str] = []
+    for _raw_line, stripped in candidate_lines:
+        if stripped.lower() in all_heading_variants:
+            break
+        intro_lines.append(stripped)
     matched_sections: list[tuple[str, list[str]]] = []
     matched_names: list[str] = []
 
@@ -142,6 +148,9 @@ def extract_preview_payload(answer: str) -> tuple[str, str, str, list[str]]:
         preview_text_parts.append(f"### {title}")
     if subtitle:
         preview_text_parts.append(subtitle)
+    if intro_lines:
+        preview_text_parts.append("")
+        preview_text_parts.append(" ".join(intro_lines).strip())
     for heading, paragraphs in preview_sections:
         preview_text_parts.append("")
         preview_text_parts.append(f"#### {heading}")
@@ -199,21 +208,29 @@ def render_plan_preview(answer: str) -> None:
         )
 
 
-def build_download_prompt(user_input: str) -> str:
+def append_coordinator_name(prompt: str, coordinator_name: str = "") -> str:
+    cleaned_name = coordinator_name.strip()
+    if not cleaned_name:
+        return prompt
+    return f"{prompt.rstrip()}\nTY Coordinator: {cleaned_name}"
+
+
+def build_download_prompt(user_input: str, coordinator_name: str = "") -> str:
     if not user_input:
-        return "Create a TY plan"
+        return append_coordinator_name("Create a TY plan", coordinator_name)
 
     lowered = user_input.lower()
     if any(term in lowered for term in ("create", "generate", "plan", "ty plan", "annual plan")):
-        return user_input
+        return append_coordinator_name(user_input, coordinator_name)
     if any(term in lowered for term in ("irish", "gaeilge", "as gaeilge", "i ngaeilge", "cruthaigh", "idirbhliana")):
-        return f"Create a TY plan in Irish focused on {user_input}"
-    return f"Create a TY plan focused on {user_input}"
+        return append_coordinator_name(f"Create a TY plan in Irish focused on {user_input}", coordinator_name)
+    return append_coordinator_name(f"Create a TY plan focused on {user_input}", coordinator_name)
 
 
 def build_tailored_plan_prompt(
     school_name: str,
     cohort_size: str,
+    coordinator_name: str,
     school_type: str,
     school_ethos: str,
     priorities: str,
@@ -227,6 +244,7 @@ def build_tailored_plan_prompt(
         "Use the following context:\n"
         f"School name: {school_name or 'Not specified'}\n"
         f"Cohort size: {cohort_size or 'Not specified'}\n"
+        f"TY Coordinator: {coordinator_name or 'Not specified'}\n"
         f"School type: {school_type or 'Not specified'}\n"
         f"School ethos: {school_ethos or 'Not specified'}\n"
         f"Main priorities: {priorities or 'Not specified'}\n"
@@ -515,6 +533,114 @@ def parse_plan_blocks(full_plan_text: str) -> tuple[str, str, list[tuple[str, li
     return title, subtitle, sections
 
 
+def clean_markdown_text(text: str) -> str:
+    cleaned = text.strip()
+    cleaned = re.sub(r"^\s*#{1,6}\s*", "", cleaned)
+    cleaned = re.sub(r"^\s*\d+\.\s*", "", cleaned)
+    cleaned = re.sub(r"^\s*[-*•]\s+", "", cleaned)
+    cleaned = cleaned.replace("\\|", "|")
+    cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
+    cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", cleaned)
+    cleaned = re.sub(r"__([^_]+)__", r"\1", cleaned)
+    cleaned = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"\1", cleaned)
+    cleaned = re.sub(r"(?<!_)_([^_]+)_(?!_)", r"\1", cleaned)
+    cleaned = re.sub(r"\[(.*?)\]\((.*?)\)", r"\1", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
+
+
+def is_list_line(line: str) -> bool:
+    return bool(re.match(r"^\s*[-*•]\s+", line))
+
+
+def is_markdown_heading_line(line: str) -> bool:
+    return bool(re.match(r"^\s*#{1,6}\s+\S+", line))
+
+
+def is_numbered_heading_line(line: str) -> bool:
+    stripped = line.strip()
+    return bool(re.match(r"^\d+\.\s+\S+", stripped)) and len(stripped.split()) <= 12
+
+
+def is_plain_heading_candidate(line: str) -> bool:
+    stripped = clean_markdown_text(line)
+    if not stripped:
+        return False
+    if any(token in stripped for token in ("|", ".", "?", "!")):
+        return False
+    if len(stripped) > 80:
+        return False
+    if len(stripped.split()) > 10:
+        return False
+    return True
+
+
+def is_table_line(line: str) -> bool:
+    stripped = line.strip()
+    return stripped.count("|") >= 2
+
+
+def parse_table_row(line: str) -> list[str]:
+    stripped = line.strip().strip("|")
+    return [clean_markdown_text(cell) for cell in stripped.split("|")]
+
+
+def is_markdown_table_separator(row: list[str]) -> bool:
+    if not row:
+        return False
+    compact = "".join(row).replace(" ", "")
+    return bool(compact) and all(char in "-:" for char in compact)
+
+
+def parse_plan_to_blocks(text: str) -> list[dict[str, object]]:
+    text = text.replace("\r\n", "\n").strip()
+    if not text:
+        return []
+
+    raw_blocks: list[list[str]] = []
+    current: list[str] = []
+    for line in text.splitlines():
+        stripped = line.rstrip()
+        if stripped.strip():
+            current.append(stripped)
+        elif current:
+            raw_blocks.append(current)
+            current = []
+    if current:
+        raw_blocks.append(current)
+
+    parsed: list[dict[str, object]] = []
+    for lines in raw_blocks:
+        if not lines:
+            continue
+
+        if all(is_table_line(line) for line in lines):
+            rows = [parse_table_row(line) for line in lines]
+            rows = [row for row in rows if row and not is_markdown_table_separator(row)]
+            if rows:
+                parsed.append({"type": "table", "rows": rows})
+            continue
+
+        if all(is_list_line(line) for line in lines):
+            items = [clean_markdown_text(line) for line in lines]
+            parsed.append({"type": "list", "items": items})
+            continue
+
+        first_line = lines[0].strip()
+        if is_markdown_heading_line(first_line) or is_numbered_heading_line(first_line) or (
+            len(lines) > 1 and is_plain_heading_candidate(first_line) and not is_table_line(first_line) and not is_list_line(first_line)
+        ):
+            parsed.append({"type": "heading", "text": clean_markdown_text(first_line)})
+            remainder = "\n".join(lines[1:]).strip()
+            if remainder:
+                parsed.extend(parse_plan_to_blocks(remainder))
+            continue
+
+        parsed.append({"type": "paragraph", "text": clean_markdown_text(" ".join(line.strip() for line in lines))})
+
+    return parsed
+
+
 def build_plan_latex(full_plan_text: str, context: dict[str, str] | None = None) -> str:
     title, subtitle, sections = parse_plan_blocks(full_plan_text)
     language = infer_plan_language(title, subtitle)
@@ -684,15 +810,47 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str, context: dict[str,
         from reportlab.lib.units import mm
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
-        from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
+        from reportlab.platypus import (
+            ListFlowable,
+            ListItem,
+            PageBreak,
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
     except Exception as exc:
         raise RuntimeError("No PDF export backend is available locally.") from exc
 
-    title_text, subtitle, sections = parse_plan_blocks(full_plan_text)
+    title_text, subtitle, _sections = parse_plan_blocks(full_plan_text)
     language = infer_plan_language(title_text, subtitle)
     subtitle = standardised_export_subtitle(language)
-    title_line_one, title_line_two, _coordinator_label, cover_note = build_cover_page_text(language)
-    school_line, coordinator_line, has_school_name = build_title_block_values(language, context)
+    _title_line_one, _title_line_two, _coordinator_label, cover_note = build_cover_page_text(language)
+    school_line, _coordinator_line, has_school_name = build_title_block_values(language, context)
+    context = normalise_template_context(context or {}, language)
+    school_name = str(context.get("school_name", "")).strip()
+    coordinator_name = str(context.get("ty_coordinator", "")).strip()
+    clean_title = title_text or ("Plean Bliantúil na hIdirbhliana" if language == "ga" else "Transition Year Annual Plan")
+    school_header = (
+        school_line
+        if school_name
+        else ("Scoil: ______________________" if language == "ga" else "School: ______________________")
+    )
+    prepared_for_header = (
+        f"Ullmhaithe do {coordinator_name}" if language == "ga" else f"Prepared for {coordinator_name}"
+    ) if coordinator_name else ""
+
+    body_text = full_plan_text
+    title_block = f"{title_text}\n{subtitle}".strip()
+    if title_block and body_text.startswith(title_block):
+        body_text = body_text[len(title_block) :].lstrip()
+    body_blocks = parse_plan_to_blocks(body_text)
+    if prepared_for_header and body_blocks:
+        first_block = body_blocks[0]
+        if first_block.get("type") == "paragraph" and str(first_block.get("text", "")).strip() == prepared_for_header:
+            body_blocks = body_blocks[1:]
+
     regular_font = "Helvetica"
     bold_font = "Helvetica-Bold"
     italic_font = "Helvetica-Oblique"
@@ -717,11 +875,11 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str, context: dict[str,
         "TYTitle",
         parent=styles["Title"],
         fontName=bold_font,
-        fontSize=22,
-        leading=28,
+        fontSize=21,
+        leading=27,
         alignment=TA_CENTER,
         textColor=colors.HexColor("#203247"),
-        spaceAfter=4,
+        spaceAfter=8,
     )
     subtitle_style = ParagraphStyle(
         "TYSubtitle",
@@ -744,21 +902,22 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str, context: dict[str,
     )
     school_style = ParagraphStyle(
         "TYSchool",
-        parent=styles["Title"],
+        parent=styles["Normal"],
         fontName=bold_font if has_school_name else regular_font,
-        fontSize=17 if has_school_name else 13,
-        leading=22 if has_school_name else 18,
+        fontSize=13 if has_school_name else 12,
+        leading=18,
         alignment=TA_CENTER,
-        spaceAfter=10,
+        spaceAfter=8,
     )
     coordinator_style = ParagraphStyle(
         "TYCoordinator",
         parent=styles["Normal"],
-        fontName=regular_font,
-        fontSize=11,
-        leading=15,
+        fontName=italic_font,
+        fontSize=11.5,
+        leading=16,
         alignment=TA_CENTER,
-        spaceAfter=18,
+        textColor=colors.HexColor("#4A5560"),
+        spaceAfter=14,
     )
     heading_style = ParagraphStyle(
         "TYHeading",
@@ -767,8 +926,8 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str, context: dict[str,
         fontSize=15,
         leading=20,
         textColor=colors.HexColor("#203247"),
-        spaceBefore=12,
-        spaceAfter=6,
+        spaceBefore=16,
+        spaceAfter=8,
     )
     body_style = ParagraphStyle(
         "TYBody",
@@ -776,7 +935,26 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str, context: dict[str,
         fontName=regular_font,
         fontSize=11,
         leading=15,
-        spaceAfter=8,
+        spaceAfter=9,
+    )
+    bullet_style = ParagraphStyle(
+        "TYBullet",
+        parent=body_style,
+        leftIndent=12,
+        firstLineIndent=0,
+        spaceAfter=4,
+    )
+    table_cell_style = ParagraphStyle(
+        "TYTableCell",
+        parent=body_style,
+        fontSize=10,
+        leading=13,
+        spaceAfter=0,
+    )
+    table_header_style = ParagraphStyle(
+        "TYTableHeader",
+        parent=table_cell_style,
+        fontName=bold_font,
     )
     placeholder_style = ParagraphStyle(
         "TYPlaceholder",
@@ -787,27 +965,76 @@ def build_pdf_fallback_bytes(full_plan_text: str, title: str, context: dict[str,
 
     story = [
         Spacer(1, 38),
-        Paragraph(title_line_one, title_style),
-        Paragraph(title_line_two, title_style),
+        Paragraph(html.escape(clean_title), title_style),
+        Paragraph(html.escape(subtitle), subtitle_style),
         Spacer(1, 10),
-        Paragraph(subtitle, subtitle_style),
-        Spacer(1, 10),
-        Paragraph(school_line, school_style),
-        Paragraph(coordinator_line, coordinator_style),
-        Paragraph(cover_note, cover_note_style),
-        PageBreak(),
+        Paragraph(html.escape(school_header), school_style),
     ]
+    if prepared_for_header:
+        story.append(Paragraph(html.escape(prepared_for_header), coordinator_style))
+    story.extend([
+        Paragraph(html.escape(cover_note), cover_note_style),
+        PageBreak(),
+    ])
 
-    for heading, paragraphs in sections:
-        if heading:
-            story.append(Paragraph(heading, heading_style))
-        for paragraph in paragraphs:
+    current_heading = ""
+    for block in body_blocks + [{"type": "_end"}]:
+        block_type = str(block.get("type", ""))
+        if block_type in {"heading", "_end"} and current_heading and needs_fill_lines(current_heading, language):
+            for fill_line in export_fill_lines():
+                story.append(Paragraph(html.escape(fill_line), placeholder_style))
+            current_heading = ""
+        if block_type == "_end":
+            continue
+        if block_type == "heading":
+            current_heading = str(block.get("text", "")).strip()
+            if current_heading:
+                story.append(Paragraph(html.escape(current_heading), heading_style))
+        elif block_type == "paragraph":
+            paragraph = str(block.get("text", "")).strip()
             if paragraph:
                 style = placeholder_style if set(paragraph) <= {"_"} else body_style
-                story.append(Paragraph(paragraph.replace("\n", "<br/>"), style))
-        if heading and needs_fill_lines(heading, language):
-            for fill_line in export_fill_lines():
-                story.append(Paragraph(fill_line, placeholder_style))
+                story.append(Paragraph(html.escape(paragraph).replace("\n", "<br/>"), style))
+        elif block_type == "list":
+            items = [str(item).strip() for item in block.get("items", []) if str(item).strip()]
+            if items:
+                list_flowable = ListFlowable(
+                    [
+                        ListItem(Paragraph(html.escape(item), bullet_style))
+                        for item in items
+                    ],
+                    bulletType="bullet",
+                    leftIndent=18,
+                )
+                story.append(list_flowable)
+                story.append(Spacer(1, 6))
+        elif block_type == "table":
+            raw_rows = block.get("rows", [])
+            rows = [[str(cell).strip() for cell in row] for row in raw_rows if isinstance(row, list)]
+            if rows:
+                max_cols = max(len(row) for row in rows)
+                padded_rows = [row + [""] * (max_cols - len(row)) for row in rows]
+                table_data = []
+                for row_index, row in enumerate(padded_rows):
+                    style = table_header_style if row_index == 0 else table_cell_style
+                    table_data.append([Paragraph(html.escape(cell), style) for cell in row])
+                table = Table(table_data, repeatRows=1, hAlign="LEFT")
+                table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E8EDF2")),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#203247")),
+                            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#B7C1CB")),
+                            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                            ("TOPPADDING", (0, 0), (-1, -1), 5),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                        ]
+                    )
+                )
+                story.append(table)
+                story.append(Spacer(1, 8))
 
     doc.build(story)
     return validate_pdf_bytes(buffer.getvalue())
@@ -1010,6 +1237,7 @@ def main() -> None:
     st.session_state.setdefault("download_unlocked", False)
     st.session_state.setdefault("lead_name", "")
     st.session_state.setdefault("lead_email", "")
+    st.session_state.setdefault("planner_coordinator_name", "")
 
     if mode == "Ask a TY Planning Question":
         input_label = "Ask a TY planning question in English or Irish"
@@ -1040,6 +1268,14 @@ def main() -> None:
                 else "You can ask in English or Irish."
             ),
         )
+        name = ""
+        if mode == "Generate a TY Annual Plan":
+            name = st.text_input(
+                "Name (optional)",
+                value=st.session_state.get("planner_coordinator_name", ""),
+                placeholder="e.g. Mary",
+                help="If provided, the plan can be lightly personalised for the TY coordinator.",
+            )
         submitted = st.form_submit_button(submit_label)
 
     if not submitted:
@@ -1056,11 +1292,20 @@ def main() -> None:
                 st.warning(empty_message)
                 return
         else:
-            question = build_download_prompt(user_input)
+            coordinator_name = name.strip()
+            question = build_download_prompt(user_input, coordinator_name=coordinator_name)
+            st.session_state["planner_coordinator_name"] = coordinator_name
 
         try:
             with st.spinner(loading_message):
-                result = answer_question(question)
+                result = answer_question(
+                    question,
+                    coordinator_name=(
+                        st.session_state.get("planner_coordinator_name", "").strip() or None
+                        if mode == "Generate a TY Annual Plan"
+                        else None
+                    ),
+                )
         except Exception as exc:  # pragma: no cover
             if mode == "Generate a TY Annual Plan":
                 st.error("TY plan generation failed. Please try again.")
@@ -1316,6 +1561,7 @@ def main() -> None:
                 improved_prompt = build_tailored_plan_prompt(
                     school_name=school_name.strip(),
                     cohort_size=cohort_size.strip(),
+                    coordinator_name=st.session_state.get("planner_coordinator_name", "").strip(),
                     school_type=school_type.strip(),
                     school_ethos=school_ethos.strip(),
                     priorities=priorities.strip(),
@@ -1326,7 +1572,10 @@ def main() -> None:
                 )
                 try:
                     with st.spinner("Generating improved TY plan..."):
-                        improved_result = answer_question(improved_prompt)
+                        improved_result = answer_question(
+                            improved_prompt,
+                            coordinator_name=st.session_state.get("planner_coordinator_name", "").strip() or None,
+                        )
                 except Exception as exc:  # pragma: no cover
                     st.error("Improved TY plan generation failed. Please try again.")
                     st.code(str(exc))

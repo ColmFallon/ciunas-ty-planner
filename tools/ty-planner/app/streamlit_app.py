@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Minimal local Streamlit UI for the TY assistant prototype."""
+"""Streamlit UI for the deployed TY planning tool."""
 
 from __future__ import annotations
 
@@ -591,7 +591,7 @@ def build_pdf_bytes(full_plan_text: str, title: str, context: dict[str, str] | N
 
 
 def main() -> None:
-    st.set_page_config(page_title="Ciunas TY AI Assistant", page_icon="📘", layout="centered")
+    st.set_page_config(page_title="Ciunas TY Planning Tool", page_icon="📘", layout="centered")
 
     st.title("Transition Year Planning Tool")
     st.write("Generate a structured TY annual plan in minutes - in English or Irish.")
@@ -626,8 +626,8 @@ def main() -> None:
         input_placeholder = "For example: How should a school structure a Transition Year programme? / Conas ba chóir clár Idirbhliana a struchtúrú?"
         submit_label = "Ask"
         loading_message = "Finding grounded TY guidance..."
-        empty_message = "Please enter a TY planning question before running the prototype."
-        idle_message = "Enter a TY planning question in English or Irish to test the local prototype."
+        empty_message = "Please enter a TY planning question before continuing."
+        idle_message = "Enter a TY planning question in English or Irish to get grounded guidance."
     else:
         input_label = "Optional: add a focus or context"
         input_placeholder = "e.g. wellbeing focus, small rural school, student leadership, as Gaeilge"
@@ -675,8 +675,7 @@ def main() -> None:
             if mode == "Generate a TY Annual Plan":
                 st.error("TY plan generation failed. Please try again.")
             else:
-                st.error("The local answer layer hit a runtime error.")
-            st.code(str(exc))
+                st.error("The guidance engine hit a runtime error. Please try again.")
             return
 
         if mode == "Generate a TY Annual Plan":
@@ -695,9 +694,9 @@ def main() -> None:
 
     if not answer and not key_points and not sources:
         if mode == "Generate a TY Annual Plan":
-            st.warning("No TY plan could be generated from the current local template mode.")
+            st.warning("No TY plan could be generated from the current template mode.")
         else:
-            st.warning("No grounded answer could be assembled from the local corpus for this question.")
+            st.warning("No grounded answer could be assembled for this question from the current source set.")
         return
 
     if mode == "Generate a TY Annual Plan":
@@ -707,15 +706,6 @@ def main() -> None:
         st.subheader("TY Annual Plan")
         render_generated_plan(full_plan_text)
         st.caption("You can download this plan or improve it further for your school.")
-        if generation_source:
-            source_label = {
-                "openai_generation": "OpenAI generation",
-                "local_generation_fallback": "Local generation fallback",
-            }.get(generation_source, generation_source)
-            if model_used and generation_source == "openai_generation":
-                st.caption(f"Generation source: {source_label} ({model_used})")
-            else:
-                st.caption(f"Generation source: {source_label}")
         output_language = infer_output_language(answer_mode, question)
         markdown_path, _text_path = save_generated_plan(full_plan_text, output_language)
         plan_title = full_plan_text.splitlines()[0].strip() if full_plan_text.splitlines() else "TY Annual Plan"
@@ -772,7 +762,7 @@ def main() -> None:
                     st.session_state["lead_email"] = cleaned_email
                     st.session_state["lead_name"] = cleaned_name
                     st.session_state["download_unlocked"] = True
-                    st.success(f"Download unlocked. Lead saved locally to `{leads_path}`.")
+                    st.success("Download unlocked. Thanks - your details have been saved.")
                     st.rerun()
         else:
             download_options = ["PDF", "Word (.docx)"] if docx_bytes else ["PDF", "Markdown (.md fallback)"]
@@ -781,7 +771,7 @@ def main() -> None:
             if download_format == "PDF":
                 pdf_path = save_export_file(pdf_bytes, output_language, "pdf", "pdf")
                 st.caption(
-                    f"The generated plan is also saved locally in `{markdown_path.parent}`. PDF export is generated directly from the full plan shown on screen."
+                    "PDF export is generated directly from the full plan shown on screen."
                 )
                 st.download_button(
                     "Download plan",
@@ -792,7 +782,7 @@ def main() -> None:
             elif download_format == "Word (.docx)":
                 docx_path = save_export_file(docx_bytes or b"", output_language, "docx", "docx")
                 st.caption(
-                    f"The generated plan is also saved locally in `{markdown_path.parent}`. Word export preserves the title and section hierarchy for editing."
+                    "Word export preserves the title and section hierarchy for editing."
                 )
                 st.download_button(
                     "Download plan",
@@ -804,10 +794,10 @@ def main() -> None:
                 markdown_bytes = markdown_path.read_bytes()
                 markdown_export_path = save_export_file(markdown_bytes, output_language, "markdown", "md")
                 st.caption(
-                    f"The generated plan is also saved locally in `{markdown_path.parent}`. Word export is temporarily unavailable, so the editable fallback is Markdown."
+                    "Word export is temporarily unavailable, so the editable fallback is Markdown."
                 )
                 if docx_error:
-                    st.caption(f"Word export fallback reason: {docx_error}.")
+                    st.caption("Word export fallback is active for this session.")
                 st.download_button(
                     "Download plan",
                     data=markdown_bytes,
@@ -929,10 +919,6 @@ def main() -> None:
     if evidence_note and mode == "Ask a TY Planning Question":
         st.subheader("Evidence Note")
         st.write(evidence_note)
-
-    if answer_mode:
-        st.caption(f"Answer mode: {answer_mode}")
-
 
 if __name__ == "__main__":
     main()

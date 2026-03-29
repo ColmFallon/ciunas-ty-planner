@@ -1414,7 +1414,7 @@ def first_sentence(question: str, ranked: list[tuple[float, dict[str, object]]],
         return "TY can build resilience and growth mindset by giving students structured challenges, regular reflection, and explicit language for progress over time."
     if ranked:
         return "The strongest answer here is the one that turns the retrieved guidance into a clear planning move for your school."
-    return "No grounded answer could be assembled from the local corpus."
+    return "No grounded answer could be assembled from the current source set."
 
 
 def build_sources(ranked: list[tuple[float, dict[str, object]]], max_sources: int = 4) -> list[dict[str, str]]:
@@ -1472,8 +1472,8 @@ def evidence_note(ranked: list[tuple[float, dict[str, object]]], mode: str) -> s
     )
     weak_note = ""
     if weak_titles:
-        weak_note = f" Weak-source warning: {weak_titles[0]} is flagged as weak in the local corpus."
-    return f"{layer_note} Answer mode: {mode}.{weak_note}".strip()
+        weak_note = f" Weak-source warning: {weak_titles[0]} is flagged as a weaker source."
+    return f"{layer_note}{weak_note}".strip()
 
 
 def answer_question(question: str) -> dict[str, object]:

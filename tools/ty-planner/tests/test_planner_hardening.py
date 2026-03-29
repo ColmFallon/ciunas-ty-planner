@@ -175,12 +175,20 @@ class PlannerHardeningTests(unittest.TestCase):
         self.assertIn("Caitliceach", self.text_ga_context)
 
     def test_preview_sections_english(self) -> None:
-        _, _, sections = streamlit_app.preview_plan_sections(self.text_en_gaelscoil)
-        self.assertEqual([heading for heading, _ in sections], ["Programme Overview", "Rationale", "Aims"])
+        _title, _subtitle, preview_text, matched_names = streamlit_app.extract_preview_payload(self.text_en_gaelscoil)
+        self.assertEqual(matched_names, ["Programme Overview", "Rationale", "Aims"])
+        self.assertIn("#### Programme Overview", preview_text)
+        self.assertIn("#### Rationale", preview_text)
+        self.assertIn("#### Aims", preview_text)
+        self.assertIn("This annual TY plan sets out the structure", preview_text)
 
     def test_preview_sections_irish(self) -> None:
-        _, _, sections = streamlit_app.preview_plan_sections(self.text_ga_context)
-        self.assertEqual([heading for heading, _ in sections], ["Forbhreathnú ar an gClár", "Réasúnaíocht", "Aidhmeanna"])
+        _title, _subtitle, preview_text, matched_names = streamlit_app.extract_preview_payload(self.text_ga_context)
+        self.assertEqual(matched_names, ["Forbhreathnú ar an gClár", "Réasúnaíocht", "Aidhmeanna"])
+        self.assertIn("#### Forbhreathnú ar an gClár", preview_text)
+        self.assertIn("#### Réasúnaíocht", preview_text)
+        self.assertIn("#### Aidhmeanna", preview_text)
+        self.assertIn("Tá an leagan seo den phlean", preview_text)
 
     def test_docx_generation_is_structurally_valid(self) -> None:
         docx_bytes = streamlit_app.build_docx_bytes(

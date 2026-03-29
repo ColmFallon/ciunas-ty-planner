@@ -24,11 +24,13 @@ GENERATED_PLANS_DIR = ROOT / "outputs" / "generated_plans"
 LEADS_DIR = ROOT / "outputs" / "leads"
 SHOW_DOCX_DIAGNOSTIC = False
 SHOW_PDF_DIAGNOSTIC = True
+SHOW_PREVIEW_DIAGNOSTIC = True
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from answer_query import (  # noqa: E402
     answer_question,
+    heading_aliases,
     normalise_school_display_name,
     normalise_template_context,
     parse_template_context,
@@ -59,22 +61,86 @@ def plan_sections_map(full_plan_text: str) -> tuple[str, str, dict[str, list[str
     return title, subtitle, section_map
 
 
-def preview_plan_sections(answer: str) -> tuple[str, str, list[tuple[str, list[str]]]]:
-    title, subtitle, sections = parse_plan_blocks(answer)
-    preview_aliases = [
-        {"programme overview", "forbhreathnú ar an gclár"},
-        {"rationale", "réasúnaíocht"},
-        {"aims", "aidhmeanna"},
-    ]
-    preview_sections: list[tuple[str, list[str]]] = []
-    for heading, paragraphs in sections:
-        normalised_heading = heading.strip().lower()
-        if preview_aliases and normalised_heading in preview_aliases[0]:
-            preview_sections.append((heading, paragraphs))
-            preview_aliases.pop(0)
-        if not preview_aliases:
-            break
-    return title, subtitle, preview_sections
+def extract_preview_payload(answer: str) -> tuple[str, str, str, list[str]]:
+    title, subtitle, _sections = parse_plan_blocks(answer)
+    language = infer_plan_language(title, subtitle)
+    canonical_headings = (
+        ["Programme Overview", "Rationale", "Aims"]
+        if language == "en"
+        else ["Forbhreathnú ar an gClár", "Réasúnaíocht", "Aidhmeanna"]
+    )
+    alias_map = heading_aliases(language)
+    all_heading_variants = set()
+    for canonical_heading, aliases in alias_map.items():
+        all_heading_variants.add(canonical_heading.strip().lower())
+        all_heading_variants.update(alias.lower() for alias in aliases)
+
+    lines = [line.rstrip() for line in answer.splitlines()]
+    non_empty_lines = [line.strip() for line in lines if line.strip()]
+    title_line = non_empty_lines[0] if non_empty_lines else ""
+    subtitle_line = non_empty_lines[1] if len(non_empty_lines) > 1 else ""
+
+    line_items: list[tuple[str, str]] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped:
+            line_items.append((line, stripped))
+
+    start_index = 0
+    if title_line:
+        for idx, (_line, stripped) in enumerate(line_items):
+            if stripped == title_line:
+                start_index = idx + 1
+                break
+    if subtitle_line:
+        for idx in range(start_index, len(line_items)):
+            if line_items[idx][1] == subtitle_line:
+                start_index = idx + 1
+                break
+
+    candidate_lines = line_items[start_index:]
+    matched_sections: list[tuple[str, list[str]]] = []
+    matched_names: list[str] = []
+
+    for canonical_heading in canonical_headings:
+        variants = {canonical_heading.strip().lower(), *[alias.lower() for alias in alias_map.get(canonical_heading, [])]}
+        match_index = None
+        match_heading = canonical_heading
+        for idx, (_raw_line, stripped) in enumerate(candidate_lines):
+            if stripped.lower() in variants:
+                match_index = idx
+                match_heading = stripped
+                break
+        if match_index is None:
+            continue
+
+        body_lines: list[str] = []
+        remainder = candidate_lines[match_index + 1 :]
+        for _raw_line, stripped in remainder:
+            if stripped.lower() in all_heading_variants:
+                break
+            body_lines.append(stripped)
+
+        body_text = " ".join(body_lines).strip()
+        matched_sections.append((match_heading, [body_text] if body_text else []))
+        matched_names.append(canonical_heading)
+        candidate_lines = remainder
+
+    if not matched_sections:
+        preview_sections = parse_plan_blocks(answer)[2][:3]
+    else:
+        preview_sections = matched_sections
+
+    preview_text_parts: list[str] = []
+    if title:
+        preview_text_parts.append(f"### {title}")
+    if subtitle:
+        preview_text_parts.append(subtitle)
+    for heading, paragraphs in preview_sections:
+        preview_text_parts.append("")
+        preview_text_parts.append(f"#### {heading}")
+        preview_text_parts.extend(paragraphs)
+    return title, subtitle, "\n\n".join(part for part in preview_text_parts if part is not None).strip(), matched_names
 
 
 def describe_pdf_runtime_support() -> tuple[bool, str]:
@@ -114,8 +180,17 @@ def render_generated_plan(answer: str) -> None:
 
 
 def render_plan_preview(answer: str) -> None:
-    title, subtitle, preview_sections = preview_plan_sections(answer)
-    render_plan_sections(title, subtitle, preview_sections)
+    title, subtitle, preview_text, matched_names = extract_preview_payload(answer)
+    if preview_text:
+        st.markdown(preview_text)
+    else:
+        render_plan_sections(title, subtitle, [])
+    if SHOW_PREVIEW_DIAGNOSTIC:
+        st.caption(f"Temporary diagnostic: Preview length {len(preview_text)} characters.")
+        st.caption(
+            "Temporary diagnostic: Preview sections detected: "
+            + (", ".join(matched_names) if matched_names else "none")
+        )
 
 
 def build_download_prompt(user_input: str) -> str:

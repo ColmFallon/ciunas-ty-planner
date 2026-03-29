@@ -64,7 +64,7 @@ EN_TEMPLATE_SECTIONS = [
     ),
     (
         "Programme Structure",
-        "The programme is organised as a balanced mix of core subjects, subject sampling, TY-specific modules, experiential learning, and reflective work. A weekly structure should include room for academic continuity, pastoral support, portfolio work, and practical experiences that give the year a clear identity. Planning should also take account of staffing, time, and available financial resources so that the programme remains realistic and sustainable across the full year. In most schools, this works best when students can see a clear rhythm across the week rather than a collection of unrelated activities.",
+        "The programme is organised as a balanced mix of core subjects, subject sampling, TY-specific modules, experiential learning, and reflective work. A weekly structure should include room for academic continuity, pastoral support, portfolio work, and practical experiences that give the year a clear identity. Planning should also take account of staffing, time, and available financial resources so that the programme remains realistic and sustainable across the full year. In many schools, subject sampling is concentrated early in the year and then supported by rotation blocks of roughly six to eight weeks so that students experience variety without losing continuity.",
     ),
     (
         "Key Strands",
@@ -76,7 +76,7 @@ EN_TEMPLATE_SECTIONS = [
     ),
     (
         "Core Modules",
-        "Core modules should combine academic continuity with TY-specific learning. Schools may include modules such as Wellbeing and Personal Development, Enterprise or Mini-Company, Digital Skills and Media, Outdoor and Experiential Learning, and Careers and Future Pathways, alongside subject sampling where appropriate. In practice, this might include a short enterprise cycle with a mini-company pitch or a digital-media task linked to school events. The final selection should reflect the school context, staffing, student needs, and available resources rather than trying to include too many strands at once. Any associated costs, budget allocation across modules and activities, and accessibility for all students should be considered at planning stage. Time allocation should be noted clearly for each module, including weekly hours, duration, or block timing.",
+        "Core modules should combine academic continuity with TY-specific learning. Schools may include modules such as Wellbeing and Personal Development, Enterprise or Mini-Company, Leadership, Financial Literacy, RSA or road-safety education, Language Tasters, Practical Life Skills, and Careers and Future Pathways, alongside subject sampling where appropriate. In practice, this might include a short enterprise cycle with a mini-company pitch, a practical budgeting task, a road-safety workshop, or a language-and-culture taster linked to school events. The final selection should reflect the school context, staffing, student needs, and available resources rather than trying to include too many strands at once. Any associated costs, budget allocation across modules and activities, and accessibility for all students should be considered at planning stage. Time allocation should be noted clearly for each module, including weekly hours, duration, or block timing.",
     ),
     (
         "Teaching and Learning Approach",
@@ -116,7 +116,7 @@ EN_TEMPLATE_SECTIONS = [
     ),
     (
         "Summary Calendar",
-        "September 2026 should be used for induction, programme launch, student voice, and portfolio setup so that students begin the year with clear expectations. October to December 2026 should focus on establishing core modules, early practical activities, and the first review point while routines are still being built. January to March 2027 should carry the main weight of sustained modules, work experience or community activity, and mid-year review so that the year has a clear centre of gravity. April to May 2027 should focus on consolidation, portfolio completion, final reflection, reporting, and celebration of learning so that the transition into Senior Cycle is purposeful rather than rushed.",
+        "September 2026 should be used for induction, programme launch, student voice, portfolio setup, and the start of any early subject-sampling rotation so that students begin the year with clear expectations. October to December 2026 should focus on establishing core modules, six- to eight-week rotation blocks, early practical activities, and the first review point while routines are still being built. January to March 2027 should carry the main weight of sustained modules, work experience or community activity, and mid-year review so that the year has a clear centre of gravity. April to May 2027 should focus on consolidation, portfolio completion, final reflection, reporting, and celebration of learning so that the transition into Senior Cycle is purposeful rather than rushed.",
     ),
 ]
 
@@ -136,7 +136,7 @@ GA_TEMPLATE_SECTIONS = [
     ),
     (
         "Struchtúr an Chláir",
-        "Tá an clár eagraithe mar mheascán cothrom de chroí-ábhair, blaiseadh ábhar, modúil shonracha don Idirbhliain, foghlaim ó thaithí, agus obair mhachnamhach. Ba chóir go mbeadh spás sa struchtúr seachtainiúil do leanúnachas acadúil, do thacaíocht thréadach, d'obair phunainne, agus d'eispéiris phraiticiúla a thugann féiniúlacht shoiléir don bhliain. Ba chóir don phleanáil acmhainní foirne, am, agus acmhainní airgeadais atá ar fáil a chur san áireamh freisin ionas go mbeidh an clár indéanta i gcaitheamh na bliana. I bhformhór na scoileanna, oibríonn sé is fearr nuair a bhíonn rithim shoiléir le feiceáil sa tseachtain seachas liosta gníomhaíochtaí gan nasc eatarthu.",
+        "Tá an clár eagraithe mar mheascán cothrom de chroí-ábhair, blaiseadh ábhar, modúil shonracha don Idirbhliain, foghlaim ó thaithí, agus obair mhachnamhach. Ba chóir go mbeadh spás sa struchtúr seachtainiúil do leanúnachas acadúil, do thacaíocht thréadach, d'obair phunainne, agus d'eispéiris phraiticiúla a thugann féiniúlacht shoiléir don bhliain. Ba chóir don phleanáil acmhainní foirne, am, agus acmhainní airgeadais atá ar fáil a chur san áireamh freisin ionas go mbeidh an clár indéanta i gcaitheamh na bliana. I go leor scoileanna, cabhraíonn blaiseadh ábhar go luath sa bhliain agus bloic rothlacha idir sé agus ocht seachtaine le cothromaíocht mhaith a chruthú idir éagsúlacht agus leanúnachas.",
     ),
     (
         "Príomhshnáitheanna",
@@ -148,7 +148,7 @@ GA_TEMPLATE_SECTIONS = [
     ),
     (
         "Croí-Mhodúil",
-        "Ba chóir do na croí-mhodúil leanúnachas acadúil a chothromú le foghlaim shonrach don Idirbhliain. D'fhéadfadh modúil ar nós Folláine agus Forbairt Phearsanta, Fiontraíocht nó Mini-Company, Scileanna Digiteacha agus Meáin, Foghlaim Lasmuigh agus Foghlaim ó Thaithí, agus Gairmeacha agus Bealaí Amach Anseo a bheith san áireamh, chomh maith le blaiseadh ábhar nuair is cuí. Go praiticiúil, d'fhéadfadh sé seo a bheith le feiceáil i dtionscadal gairid fiontraíochta nó i dtasc meán digiteach bunaithe ar imeacht scoile. Ba chóir go léireodh an rogha deiridh comhthéacs na scoile, an fhoireann, riachtanais na scoláirí, agus na hacmhainní atá ar fáil seachas iarracht a dhéanamh an iomarca a chur isteach sa chlár. Ba chóir costais a bhaineann le modúil, leithdháileadh an bhuiséid ar ghníomhaíochtaí, agus inrochtaineacht do gach scoláire a mheas ag céim na pleanála. Ba chóir leithdháileadh ama gach modúil a bheith soiléir, lena n-áirítear uaireanta seachtainiúla, fad, nó bloc-am.",
+        "Ba chóir do na croí-mhodúil leanúnachas acadúil a chothromú le foghlaim shonrach don Idirbhliain. D'fhéadfadh modúil ar nós Folláine agus Forbairt Phearsanta, Fiontraíocht nó Mini-Company, Ceannaireacht, Litearthacht Airgeadais, RSA nó sábháilteacht ar bhóithre, blaiseadh teangacha, scileanna praiticiúla saoil, agus Gairmeacha agus Bealaí Amach Anseo a bheith san áireamh, chomh maith le blaiseadh ábhar nuair is cuí. Go praiticiúil, d'fhéadfadh sé seo a bheith le feiceáil i dtionscadal gairid fiontraíochta, i dtasc buiséadaithe, i gceardlann sábháilteachta bóthair, nó i mblas teanga agus cultúir bunaithe ar imeacht scoile. Ba chóir go léireodh an rogha deiridh comhthéacs na scoile, an fhoireann, riachtanais na scoláirí, agus na hacmhainní atá ar fáil seachas iarracht a dhéanamh an iomarca a chur isteach sa chlár. Ba chóir costais a bhaineann le modúil, leithdháileadh an bhuiséid ar ghníomhaíochtaí, agus inrochtaineacht do gach scoláire a mheas ag céim na pleanála. Ba chóir leithdháileadh ama gach modúil a bheith soiléir, lena n-áirítear uaireanta seachtainiúla, fad, nó bloc-am.",
     ),
     (
         "Cur Chuige Teagaisc agus Foghlama",
@@ -188,7 +188,7 @@ GA_TEMPLATE_SECTIONS = [
     ),
     (
         "Féilire Achomair",
-        "Ba chóir Meán Fómhair 2026 a úsáid le haghaidh ionduchtaithe, tús an chláir, guth an scoláire, agus socrú na punainne ionas go mbeidh ionchais shoiléire ann ón tús. Ba chóir Deireadh Fómhair go Nollaig 2026 díriú ar na croí-mhodúil, ar ghníomhaíochtaí praiticiúla luatha, agus ar an gcéad phointe athbhreithnithe agus gnáthaimh na bliana fós á mbunú. Ba chóir Eanáir go Márta 2027 an phríomhualach a thabhairt do mhodúil leanúnacha, do thaithí oibre nó d'obair phobail, agus d'athbhreithniú lárbhliana ionas go mbeidh croílár soiléir ag an mbliain. Ba chóir Aibreán go Bealtaine 2027 díriú ar chomhdhlúthú, ar chríochnú na punainne, ar mhachnamh deiridh, ar thuairisciú, agus ar cheiliúradh foghlama ionas go mbeidh an t-aistriú go dtí an tsraith shinsearach réidh agus fóinteach.",
+        "Ba chóir Meán Fómhair 2026 a úsáid le haghaidh ionduchtaithe, tús an chláir, guth an scoláire, socrú na punainne, agus tús aon bhloc luath de bhlaiseadh ábhar ionas go mbeidh ionchais shoiléire ann ón tús. Ba chóir Deireadh Fómhair go Nollaig 2026 díriú ar na croí-mhodúil, ar bhlocanna rothlacha idir sé agus ocht seachtaine, ar ghníomhaíochtaí praiticiúla luatha, agus ar an gcéad phointe athbhreithnithe agus gnáthaimh na bliana fós á mbunú. Ba chóir Eanáir go Márta 2027 an phríomhualach a thabhairt do mhodúil leanúnacha, do thaithí oibre nó d'obair phobail, agus d'athbhreithniú lárbhliana ionas go mbeidh croílár soiléir ag an mbliain. Ba chóir Aibreán go Bealtaine 2027 díriú ar chomhdhlúthú, ar chríochnú na punainne, ar mhachnamh deiridh, ar thuairisciú, agus ar cheiliúradh foghlama ionas go mbeidh an t-aistriú go dtí an tsraith shinsearach réidh agus fóinteach.",
     ),
 ]
 
@@ -228,16 +228,19 @@ def is_template_generation_request(question: str) -> bool:
 def infer_school_context(question: str, language: str) -> str:
     context = parse_template_context(question)
     school_name = tidy_context_phrase(context.get("school_name", ""))
+    cohort_size = tidy_context_phrase(context.get("cohort_size", ""))
     school_type = tidy_context_phrase(context.get("school_type", ""))
+    school_ethos = tidy_context_phrase(context.get("school_ethos", ""))
     priorities = tidy_context_phrase(context.get("priorities", ""))
     existing_modules = tidy_context_phrase(context.get("existing_modules", ""))
     work_experience = tidy_context_phrase(context.get("work_experience", ""))
     additional_context = tidy_context_phrase(context.get("additional_context", ""))
-    has_ethos = context_mentions_ethos(additional_context)
+    ethos_context = ", ".join(part for part in (school_ethos, additional_context) if part)
+    has_ethos = context_mentions_ethos(ethos_context)
 
-    if any((school_name, school_type, priorities, existing_modules, work_experience, additional_context)):
+    if any((school_name, cohort_size, school_type, school_ethos, priorities, existing_modules, work_experience, additional_context)):
         if language == "ga":
-            opening = "Tá an dréachtphlean seo ceaptha mar bhunús oibre"
+            opening = "Tá an plean bliantúil seo ceaptha mar bhunús oibre"
             if school_name and school_type:
                 opening += f" do {school_name}, {school_type}"
             elif school_name:
@@ -247,6 +250,10 @@ def infer_school_context(question: str, language: str) -> str:
             opening += "."
 
             parts = [opening]
+            if cohort_size:
+                parts.append(f"Ba chóir méid an chohóirt, {cohort_size}, a chur san áireamh agus modúil, maoirseacht, agus taithí oibre á bpleanáil.")
+            if school_ethos and not has_ethos:
+                parts.append(f"Ba chóir ton agus béim an phlean a ailíniú le carachtar na scoile seo mar {school_ethos}.")
             if priorities:
                 parts.append(f"Ba chóir go léireodh sé fócas na scoile ar {priorities}.")
             if existing_modules:
@@ -255,10 +262,9 @@ def infer_school_context(question: str, language: str) -> str:
                 parts.append(f"Ba chóir socrú na taithí oibre a ailíniú le {work_experience}.")
             if additional_context and not has_ethos:
                 parts.append(f"Ba chóir sonraí áitiúla ar nós {additional_context} a chur san áireamh nuair is cuí.")
-            parts.append("Ba chóir go bhfágfadh an leagan deiridh spás fós do shonraí áitiúla breise más gá.")
             return " ".join(parts)
 
-        opening = "This draft plan is designed as a working starting point"
+        opening = "This annual plan is designed as a working starting point"
         if school_name and school_type:
             opening += f" for {school_name}, a {school_type}"
         elif school_name:
@@ -268,6 +274,10 @@ def infer_school_context(question: str, language: str) -> str:
         opening += "."
 
         parts = [opening]
+        if cohort_size:
+            parts.append(f"The cohort context of {cohort_size} should be taken into account when planning grouping, supervision, and the scale of activities.")
+        if school_ethos and not has_ethos:
+            parts.append(f"The tone and emphasis of the plan should also align with the school's character as {school_ethos}.")
         if priorities:
             parts.append(f"It should reflect the school's emphasis on {priorities}.")
         if existing_modules:
@@ -276,24 +286,20 @@ def infer_school_context(question: str, language: str) -> str:
             parts.append(f"Work experience should be aligned with {work_experience}.")
         if additional_context and not has_ethos:
             parts.append(f"Local details such as {additional_context} should also shape the school version where relevant.")
-        parts.append("The final version should still leave room for any further local detail the school wishes to add.")
         return " ".join(parts)
 
     if language == "ga":
-        return (
-            "Ba chóir ainm na scoile, méid an chohóirt, agus sonraí eile a bhaineann leis an gcomhthéacs áitiúil "
-            "a chur isteach anseo bunaithe ar riachtanais na scoile."
-        )
-    return (
-        "Insert the school name, cohort size, and any other local context details here to match the school's own setting."
-    )
+        return "Tá an plean bliantúil seo ceaptha mar bhunús oibre do chlár Idirbhliana atá soiléir, praiticiúil, agus in-oiriúnaithe do chomhthéacs na scoile."
+    return "This annual plan is designed as a practical working draft for a clear, usable, and adaptable Transition Year programme."
 
 
 def parse_template_context(question: str) -> dict[str, str]:
     patterns = {
         "school_name": r"(?:School name|Ainm na scoile):\s*(.+)",
+        "cohort_size": r"(?:Cohort size|Approximate TY cohort size|Méid an chohóirt):\s*(.+)",
         "ty_coordinator": r"(?:TY Coordinator|Comhordaitheoir TY):\s*(.+)",
         "school_type": r"(?:School type|Cineál scoile):\s*(.+)",
+        "school_ethos": r"(?:School ethos|School ethos or character|Éiteas na scoile):\s*(.+)",
         "priorities": r"(?:Main priorities|Príomhthosaíochtaí):\s*(.+)",
         "existing_modules": r"(?:Existing modules|Modúil atá ann cheana):\s*(.+)",
         "work_experience": r"(?:Work experience timing|Amchlár na taithí oibre):\s*(.+)",
@@ -339,7 +345,7 @@ def tidy_context_phrase(value: str) -> str:
 def detect_context_signals(context: dict[str, str]) -> set[str]:
     combined = " ".join(
         tidy_context_phrase(context.get(key, ""))
-        for key in ("school_type", "priorities", "existing_modules", "additional_context")
+        for key in ("school_type", "school_ethos", "priorities", "existing_modules", "additional_context")
     ).lower()
 
     signal_terms = {
@@ -360,6 +366,8 @@ def detect_context_signals(context: dict[str, str]) -> set[str]:
             "paroiste",
         ),
         "deis": ("deis",),
+        "gaelscoil": ("gaelscoil", "gaelcholáiste", "gaelcholaiste", "irish-medium", "gaeilge"),
+        "catholic_ethos": ("catholic", "faith", "christian", "religious", "gospel", "parish", "caitliceach", "creideamh"),
         "inclusion_context": ("additional needs", "sen", "inclusion", "attendance", "engagement", "cuimsiú", "cuimsiu", "riachtanais"),
         "gaisce": ("gaisce",),
         "musical": ("musical", "drama production", "show", "ceoldráma", "ceoldrama", "ceol", "léiriú ceoil", "leiriu ceoil"),
@@ -374,12 +382,16 @@ def detect_context_signals(context: dict[str, str]) -> set[str]:
 
 
 def build_context_plan(context: dict[str, str], language: str) -> dict[str, list[str]]:
+    school_name = tidy_context_phrase(context.get("school_name", ""))
+    cohort_size = tidy_context_phrase(context.get("cohort_size", ""))
     priorities = tidy_context_phrase(context.get("priorities", ""))
+    school_ethos = tidy_context_phrase(context.get("school_ethos", ""))
     existing_modules = tidy_context_phrase(context.get("existing_modules", ""))
     work_experience = tidy_context_phrase(context.get("work_experience", ""))
     school_type = tidy_context_phrase(context.get("school_type", ""))
     additional_context = tidy_context_phrase(context.get("additional_context", ""))
-    has_ethos = context_mentions_ethos(additional_context)
+    ethos_context = ", ".join(part for part in (school_ethos, additional_context) if part)
+    has_ethos = context_mentions_ethos(ethos_context)
     signals = detect_context_signals(context)
 
     plan: dict[str, list[str]] = {}
@@ -389,6 +401,16 @@ def build_context_plan(context: dict[str, str], language: str) -> dict[str, list
             plan.setdefault(heading, []).append(sentence)
 
     if language == "ga":
+        if school_name:
+            add(
+                "Forbhreathnú ar an gClár",
+                f"Tá an leagan seo den phlean dírithe ar chomhthéacs {school_name} agus ba chóir go mbeadh sé úsáideach mar dhoiciméad oibre don fhoireann TY.",
+            )
+        if cohort_size:
+            add(
+                "Forbhreathnú ar an gClár",
+                f"Ba chóir méid an chohóirt, {cohort_size}, a chur san áireamh agus scála na ngníomhaíochtaí, na ngrúpaí, agus na maoirseachta á leagan amach.",
+            )
         if priorities:
             add(
                 "Réasúnaíocht",
@@ -402,6 +424,11 @@ def build_context_plan(context: dict[str, str], language: str) -> dict[str, list
             add(
                 "Struchtúr an Chláir",
                 f"Ba chóir struchtúr an chláir a oiriúnú do réaltachtaí na scoile seo mar {school_type}.",
+            )
+        if school_ethos and not has_ethos:
+            add(
+                "Réasúnaíocht",
+                f"Ba chóir ton agus béim an phlean a ailíniú le carachtar na scoile seo mar {school_ethos}.",
             )
         if existing_modules:
             add(
@@ -417,15 +444,19 @@ def build_context_plan(context: dict[str, str], language: str) -> dict[str, list
             if has_ethos:
                 add(
                     "Réasúnaíocht",
-                    f"Ba chóir don phlean freisin teacht le héiteas na scoile mar atá le sonrú sa chomhthéacs seo: {additional_context}.",
+                    f"Ba chóir don phlean freisin teacht le héiteas na scoile mar atá le sonrú sa chomhthéacs seo: {ethos_context}.",
                 )
                 add(
                     "Folláine",
-                    "Sa snáithe folláine, ba chóir go mbeadh cúram, meas, agus forbairt phearsanta le sonrú ar bhealach a thagann le héiteas na scoile.",
+                    "Sa snáithe folláine, ba chóir go mbeadh cúram, meas, machnamh, agus forbairt phearsanta le sonrú ar bhealach a thagann le héiteas na scoile.",
                 )
                 add(
                     "Foghlaim ó thaithí",
                     "Ba chóir deis a thabhairt do scoláirí páirt a ghlacadh i ngníomhaíochtaí pobail agus seirbhíse a léiríonn an t-éiteas sin go nádúrtha.",
+                )
+                add(
+                    "Príomhshnáitheanna",
+                    "Ba chóir go mbeadh teanga an phobail, na seirbhíse, agus an chúraim le feiceáil mar chuid de shnáithe an tsaoránachta agus an fháis phearsanta.",
                 )
             else:
                 add(
@@ -439,7 +470,7 @@ def build_context_plan(context: dict[str, str], language: str) -> dict[str, list
         if "rural" in signals:
             add(
                 "Foghlaim ó thaithí",
-                "D'fhéadfadh foghlaim áitiúil, comhpháirtíochtaí pobail, agus tionscadail bunaithe ar an gceantar a bheith an-oiriúnach sa chomhthéacs seo.",
+                "D'fhéadfadh foghlaim áitiúil, comhpháirtíochtaí pobail, tionscadail bunaithe ar an gceantar, agus blocanna socrúcháin le fostóirí áitiúla a bheith an-oiriúnach sa chomhthéacs seo.",
             )
             add(
                 "Guth na Mac Léinn",
@@ -468,6 +499,19 @@ def build_context_plan(context: dict[str, str], language: str) -> dict[str, list
                 "Cuimsiú",
                 "Sa chomhthéacs seo, ba chóir aird faoi leith a thabhairt ar inrochtaineacht, ar rannpháirtíocht, agus ar bhealaí praiticiúla chun scoláirí a choinneáil páirteach agus muiníneach.",
             )
+            add(
+                "Folláine",
+                "Ba chóir don snáithe folláine tacú go soiléir le muintearas, tinreamh, féinmhuinín, agus gnáthaimh sheasta a chuidíonn le rannpháirtíocht leanúnach.",
+            )
+        if "gaelscoil" in signals:
+            add(
+                "Forbhreathnú ar an gClár",
+                "Sa chomhthéacs seo, ba chóir go mbeadh an Ghaeilge le feiceáil go nádúrtha i dteanga an chláir, i machnamh na scoláirí, agus i gcur i láthair poiblí na foghlama.",
+            )
+            add(
+                "Cur Chuige Teagaisc agus Foghlama",
+                "Is fiú a chinntiú go dtacaíonn tascanna, plé, agus taispeántais le húsáid nádúrtha agus mhuiníneach na Gaeilge ar fud na bliana.",
+            )
         module_examples: list[str] = []
         if "gaisce" in signals:
             module_examples.append("Gaisce")
@@ -483,6 +527,16 @@ def build_context_plan(context: dict[str, str], language: str) -> dict[str, list
             )
         return plan
 
+    if school_name:
+        add(
+            "Programme Overview",
+            f"This version of the plan is written with the context of {school_name} in mind and should operate as a practical working document for the TY team.",
+        )
+    if cohort_size:
+        add(
+            "Programme Overview",
+            f"The cohort context of {cohort_size} should inform the scale of grouping, supervision, portfolio support, and practical activities across the year.",
+        )
     if priorities:
         add(
             "Rationale",
@@ -496,6 +550,11 @@ def build_context_plan(context: dict[str, str], language: str) -> dict[str, list
         add(
             "Programme Structure",
             f"The overall structure should be practical for a school context such as {school_type}.",
+        )
+    if school_ethos and not has_ethos:
+        add(
+            "Rationale",
+            f"The overall tone of the plan should also reflect the school's character as {school_ethos}.",
         )
     if existing_modules:
         add(
@@ -511,15 +570,19 @@ def build_context_plan(context: dict[str, str], language: str) -> dict[str, list
         if has_ethos:
             add(
                 "Rationale",
-                f"The plan should also reflect the school's ethos, as seen in its {additional_context}.",
+                f"The plan should also reflect the school's ethos, as seen in its {ethos_context}.",
             )
             add(
                 "Wellbeing",
-                "Within the wellbeing strand, this should be visible in an emphasis on care, dignity, reflection, and respectful relationships.",
+                "Within the wellbeing strand, this should be visible in an emphasis on care, dignity, reflection, respectful relationships, and service.",
             )
             add(
                 "Experiential Learning",
                 "Community and service opportunities should be chosen in ways that reflect that ethos in a practical and authentic manner.",
+            )
+            add(
+                "Key Strands",
+                "Community and citizenship should be framed in language that reflects service, care for others, and contribution to the wider school and local community.",
             )
         else:
             add(
@@ -533,7 +596,7 @@ def build_context_plan(context: dict[str, str], language: str) -> dict[str, list
     if "rural" in signals:
         add(
             "Experiential Learning",
-            "Local placements, community partnerships, and area-based projects may be especially suitable in this context.",
+            "Local placements, community partnerships, area-based projects, and practical visits linked to local employers or services may be especially suitable in this context.",
         )
         add(
             "Student Voice",
@@ -561,6 +624,19 @@ def build_context_plan(context: dict[str, str], language: str) -> dict[str, list
         add(
             "Inclusion",
             "In this setting, particular care should be taken to keep participation manageable, accessible, and encouraging for all students across the year.",
+        )
+        add(
+            "Wellbeing",
+            "The wellbeing strand should also support belonging, confidence, attendance, and steady routines so that students experience TY as encouraging and achievable.",
+        )
+    if "gaelscoil" in signals:
+        add(
+            "Programme Overview",
+            "In a gaelscoil or gaelcholáiste context, Irish should remain visible in the tone of the programme, in reflection tasks, and in how learning is presented publicly.",
+        )
+        add(
+            "Teaching and Learning Approach",
+            "Where appropriate, activities and presentations should help students use Irish confidently in practical, creative, and reflective settings.",
         )
     module_examples = []
     if "gaisce" in signals:
@@ -701,7 +777,9 @@ def build_openai_template_instructions(language: str) -> str:
 def build_openai_template_prompt(question: str, language: str) -> str:
     context = parse_template_context(question)
     school_name = context.get("school_name", "Not specified")
+    cohort_size = context.get("cohort_size", "Not specified")
     school_type = context.get("school_type", "Not specified")
+    school_ethos = context.get("school_ethos", "Not specified")
     priorities = context.get("priorities", "Not specified")
     existing_modules = context.get("existing_modules", "Not specified")
     work_experience = context.get("work_experience", "Not specified")
@@ -713,7 +791,9 @@ def build_openai_template_prompt(question: str, language: str) -> str:
             "Cruthaigh plean bliantúil iomlán don Idirbhliain.\n\n"
             "Úsáid an comhthéacs seo más ábhartha:\n"
             f"Ainm na scoile: {school_name}\n"
+            f"Méid an chohóirt: {cohort_size}\n"
             f"Cineál scoile: {school_type}\n"
+            f"Éiteas na scoile: {school_ethos}\n"
             f"Príomhthosaíochtaí: {priorities}\n"
             f"Modúil atá ann cheana: {existing_modules}\n"
             f"Amchlár na taithí oibre: {work_experience}\n"
@@ -721,10 +801,12 @@ def build_openai_template_prompt(question: str, language: str) -> str:
             f"Teanga: {language_label}\n\n"
             "Caithfidh an plean:\n"
             "- comhthéacs na scoile a léiriú nuair atá sé ar fáil\n"
+            "- ainm na scoile agus méid an chohóirt a úsáid go nádúrtha nuair is cuí\n"
             "- tosaíochtaí luaite a chur chun tosaigh\n"
             "- modúil atá ann cheana a chur san áireamh nuair is cuí\n"
             "- taithí oibre a eagrú go praiticiúil\n"
             "- comhthéacs breise nó éiteas a fhí isteach go nádúrtha seachas é a athrá mar abairt ar leith\n"
+            "- a bheith inchreidte i gcomhthéacs chleachtas fíor na hIdirbhliana in Éirinn\n"
             "- a bheith oiriúnach le haghaidh eagarthóireachta agus úsáide i scoil\n"
             "- na ceannteidil sheasta a úsáid go díreach agus san ord ceart\n\n"
             f"Iarratas úsáideora bunaidh: {question}"
@@ -734,7 +816,9 @@ def build_openai_template_prompt(question: str, language: str) -> str:
         "Create a full Transition Year annual plan.\n\n"
         "Use this context where relevant:\n"
         f"School name: {school_name}\n"
+        f"Cohort size: {cohort_size}\n"
         f"School type: {school_type}\n"
+        f"School ethos: {school_ethos}\n"
         f"Main priorities: {priorities}\n"
         f"Existing modules: {existing_modules}\n"
         f"Work experience timing: {work_experience}\n"
@@ -742,10 +826,12 @@ def build_openai_template_prompt(question: str, language: str) -> str:
         f"Language: {language_label}\n\n"
         "The plan must:\n"
         "- reflect the school context where provided\n"
+        "- use the school name and cohort context naturally where relevant\n"
         "- prioritise the stated focus areas\n"
         "- incorporate existing modules where relevant\n"
         "- structure work experience in a practical way\n"
         "- weave additional context or ethos into the document naturally rather than repeating it as a standalone sentence\n"
+        "- feel realistic in the context of current Irish TY practice\n"
         "- remain realistic, editable, and useful for a TY coordinator\n"
         "- use the fixed section headings exactly and in the correct order\n\n"
         f"Original user request: {question}"

@@ -73,7 +73,9 @@ def build_download_prompt(user_input: str) -> str:
 
 def build_tailored_plan_prompt(
     school_name: str,
+    cohort_size: str,
     school_type: str,
+    school_ethos: str,
     priorities: str,
     existing_modules: str,
     work_experience: str,
@@ -84,7 +86,9 @@ def build_tailored_plan_prompt(
         "Create a Transition Year annual plan.\n\n"
         "Use the following context:\n"
         f"School name: {school_name or 'Not specified'}\n"
+        f"Cohort size: {cohort_size or 'Not specified'}\n"
         f"School type: {school_type or 'Not specified'}\n"
+        f"School ethos: {school_ethos or 'Not specified'}\n"
         f"Main priorities: {priorities or 'Not specified'}\n"
         f"Existing modules: {existing_modules or 'Not specified'}\n"
         f"Work experience timing: {work_experience or 'Not specified'}\n"
@@ -92,9 +96,11 @@ def build_tailored_plan_prompt(
         f"Language: {language or 'English'}\n\n"
         "The plan should:\n"
         "- reflect the school context\n"
+        "- use the school name and cohort context naturally where relevant\n"
         "- prioritise the stated focus areas\n"
         "- incorporate existing modules where relevant\n"
         "- structure work experience appropriately\n"
+        "- sound realistic for current TY practice in Irish schools\n"
         "- remain practical and usable for a TY coordinator\n\n"
         "Generate a full structured TY annual plan."
     )
@@ -319,7 +325,7 @@ def build_plan_latex(full_plan_text: str, context: dict[str, str] | None = None)
 
     return (
         "\\documentclass[11pt]{article}\n"
-        "\\usepackage[a4paper,margin=23mm,top=24mm,bottom=24mm]{geometry}\n"
+        "\\usepackage[a4paper,margin=22mm,top=24mm,bottom=24mm]{geometry}\n"
         "\\usepackage{fontspec}\n"
         "\\usepackage{microtype}\n"
         "\\usepackage{titlesec}\n"
@@ -332,25 +338,26 @@ def build_plan_latex(full_plan_text: str, context: dict[str, str] | None = None)
         "\\setstretch{1.14}\n"
         "\\setlength{\\parskip}{0.98em}\n"
         "\\setlength{\\parindent}{0pt}\n"
-        "\\titleformat{\\section}{\\Large\\bfseries\\sffamily}{}{0pt}{}\n"
-        "\\titlespacing*{\\section}{0pt}{2.2em}{0.8em}\n"
+        "\\titleformat{\\section}{\\LARGE\\bfseries\\sffamily}{}{0pt}{}\n"
+        "\\titlespacing*{\\section}{0pt}{2.0em}{0.65em}\n"
         "\\raggedbottom\n"
         "\\pagestyle{plain}\n"
         "\\begin{document}\n"
         "\\thispagestyle{empty}\n"
         "\\begin{center}\n"
-        f"{{\\fontsize{{21pt}}{{27pt}}\\selectfont\\bfseries\\sffamily {escaped_title_line_one}\\par}}\n"
-        "\\vspace{0.45em}\n"
-        f"{{\\fontsize{{21pt}}{{27pt}}\\selectfont\\bfseries\\sffamily {escaped_title_line_two}\\par}}\n"
-        "\\vspace{1.05em}\n"
+        "\\vspace*{2.0cm}\n"
+        f"{{\\fontsize{{22pt}}{{28pt}}\\selectfont\\bfseries\\sffamily {escaped_title_line_one}\\par}}\n"
+        "\\vspace{0.35em}\n"
+        f"{{\\fontsize{{22pt}}{{28pt}}\\selectfont\\bfseries\\sffamily {escaped_title_line_two}\\par}}\n"
+        "\\vspace{1.15em}\n"
         f"{{\\large\\itshape {escaped_subtitle}\\par}}\n"
-        "\\vspace{1.85em}\n"
+        "\\vspace{1.7em}\n"
         f"{school_line}"
-        "\\vspace{1.0em}\n"
+        "\\vspace{0.9em}\n"
         f"{{\\normalsize\\sffamily {escaped_coordinator_field}\\par}}\n"
-        "\\vspace{1.6em}\n"
+        "\\vspace{1.4em}\n"
         f"{{\\normalsize\\itshape {escaped_cover_note}\\par}}\n"
-        "\\vspace{2.0em}\n"
+        "\\vfill\n"
         "\\rule{0.82\\textwidth}{0.5pt}\\par\n"
         "\\end{center}\n"
         "\\newpage\n"
@@ -815,6 +822,10 @@ def main() -> None:
                     "School name (optional)",
                     placeholder="e.g. St. Mary's College",
                 )
+                cohort_size = st.text_input(
+                    "Approximate TY cohort size (optional)",
+                    placeholder="e.g. 68 students",
+                )
                 school_type = st.text_input(
                     "School type",
                     placeholder="e.g. small rural mixed school",
@@ -822,6 +833,10 @@ def main() -> None:
                         "Examples: Gaelcholáiste, English-medium school, mixed school, girls' school, "
                         "boys' school, large urban school, small rural school, DEIS school."
                     ),
+                )
+                school_ethos = st.text_input(
+                    "School ethos or character (optional)",
+                    placeholder="e.g. Catholic ethos, Gaelscoil, ETB school",
                 )
                 priorities = st.text_area(
                     "Main priorities for TY this year",
@@ -865,7 +880,9 @@ def main() -> None:
             if improve_submitted:
                 improved_prompt = build_tailored_plan_prompt(
                     school_name=school_name.strip(),
+                    cohort_size=cohort_size.strip(),
                     school_type=school_type.strip(),
+                    school_ethos=school_ethos.strip(),
                     priorities=priorities.strip(),
                     existing_modules=existing_modules.strip(),
                     work_experience=work_experience.strip(),

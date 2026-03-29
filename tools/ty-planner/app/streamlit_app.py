@@ -23,8 +23,8 @@ SCRIPTS_DIR = ROOT / "scripts"
 GENERATED_PLANS_DIR = ROOT / "outputs" / "generated_plans"
 LEADS_DIR = ROOT / "outputs" / "leads"
 SHOW_DOCX_DIAGNOSTIC = False
-SHOW_PDF_DIAGNOSTIC = True
-SHOW_PREVIEW_DIAGNOSTIC = True
+SHOW_PDF_DIAGNOSTIC = False
+SHOW_PREVIEW_DIAGNOSTIC = False
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -1008,7 +1008,6 @@ def main() -> None:
             st.error("Generator mode did not return a full TY plan, so export has been disabled for this response.")
             return
         unlocked = st.session_state.get("download_unlocked", False)
-        st.subheader("TY Annual Plan")
         if unlocked:
             render_generated_plan(full_plan_text)
             st.caption("You can download this plan or improve it further for your school.")

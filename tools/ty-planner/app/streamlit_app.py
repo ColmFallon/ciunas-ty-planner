@@ -82,61 +82,58 @@ def extract_preview_payload(answer: str) -> tuple[str, str, str, list[str]]:
         all_heading_variants.add(canonical_heading.strip().lower())
         all_heading_variants.update(alias.lower() for alias in aliases)
 
-    lines = [line.rstrip() for line in answer.splitlines()]
-    non_empty_lines = [line.strip() for line in lines if line.strip()]
-    title_line = non_empty_lines[0] if non_empty_lines else ""
-    subtitle_line = non_empty_lines[1] if len(non_empty_lines) > 1 else ""
+    remaining_text = answer.strip()
+    title_block = f"{title}\n{subtitle}".strip()
+    if title_block and remaining_text.startswith(title_block):
+        remaining_text = remaining_text[len(title_block) :].lstrip()
 
-    line_items: list[tuple[str, str]] = []
-    for line in lines:
-        stripped = line.strip()
-        if stripped:
-            line_items.append((line, stripped))
+    def heading_pattern(heading: str, aliases: list[str]) -> re.Pattern[str]:
+        variants = [heading, *aliases]
+        escaped = "|".join(re.escape(variant) for variant in variants if variant.strip())
+        return re.compile(
+            rf"(?im)(?:^|[\n\r]|(?<=\s))(?:(?:###?|####?)\s*)?(?:\d+\.\s*)?({escaped})\b"
+        )
 
-    start_index = 0
-    if title_line:
-        for idx, (_line, stripped) in enumerate(line_items):
-            if stripped == title_line:
-                start_index = idx + 1
-                break
-    if subtitle_line:
-        for idx in range(start_index, len(line_items)):
-            if line_items[idx][1] == subtitle_line:
-                start_index = idx + 1
-                break
-
-    candidate_lines = line_items[start_index:]
-    intro_lines: list[str] = []
-    for _raw_line, stripped in candidate_lines:
-        if stripped.lower() in all_heading_variants:
-            break
-        intro_lines.append(stripped)
+    section_matches: list[tuple[str, int, int]] = []
     matched_sections: list[tuple[str, list[str]]] = []
     matched_names: list[str] = []
 
     for canonical_heading in canonical_headings:
-        variants = {canonical_heading.strip().lower(), *[alias.lower() for alias in alias_map.get(canonical_heading, [])]}
-        match_index = None
-        match_heading = canonical_heading
-        for idx, (_raw_line, stripped) in enumerate(candidate_lines):
-            if stripped.lower() in variants:
-                match_index = idx
-                match_heading = stripped
-                break
-        if match_index is None:
+        pattern = heading_pattern(canonical_heading, alias_map.get(canonical_heading, []))
+        match = pattern.search(remaining_text)
+        if not match:
             continue
+        section_matches.append((canonical_heading, match.start(1), match.end(1)))
 
-        body_lines: list[str] = []
-        remainder = candidate_lines[match_index + 1 :]
-        for _raw_line, stripped in remainder:
-            if stripped.lower() in all_heading_variants:
-                break
-            body_lines.append(stripped)
+    if section_matches:
+        section_matches.sort(key=lambda item: item[1])
+        intro_text = clean_markdown_text(remaining_text[: section_matches[0][1]])
+        intro_lines = [intro_text] if intro_text and len(intro_text) <= 120 else []
 
-        body_text = " ".join(body_lines).strip()
-        matched_sections.append((match_heading, [body_text] if body_text else []))
-        matched_names.append(canonical_heading)
-        candidate_lines = remainder
+        for index, (canonical_heading, _start, heading_end) in enumerate(section_matches):
+            body_end = len(remaining_text) if index + 1 >= len(section_matches) else section_matches[index + 1][1]
+            body_slice = remaining_text[heading_end:body_end].strip()
+            body_text = clean_markdown_text(body_slice)
+            matched_sections.append((canonical_heading, [body_text] if body_text else []))
+            matched_names.append(canonical_heading)
+    else:
+        intro_lines = []
+
+    if not matched_sections:
+        preview_sections = parse_plan_blocks(answer)[2][:3]
+        matched_names = [heading for heading, _paragraphs in preview_sections if heading]
+    else:
+        preview_sections = matched_sections
+
+    # Keep only a short non-section preface such as "Prepared for Mary".
+    if intro_lines:
+        filtered_intro = []
+        for line in intro_lines:
+            lowered_line = line.lower()
+            if any(variant in lowered_line for variant in all_heading_variants):
+                continue
+            filtered_intro.append(line)
+        intro_lines = filtered_intro[:1]
 
     if not matched_sections:
         preview_sections = parse_plan_blocks(answer)[2][:3]

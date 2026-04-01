@@ -1233,6 +1233,8 @@ def main() -> None:
     st.session_state.setdefault("generated_plan_result", None)
     st.session_state.setdefault("generated_plan_prompt", "Create a TY plan")
     st.session_state.setdefault("show_tailor_form", False)
+    st.session_state.setdefault("full_plan", "")
+    st.session_state.setdefault("email_unlocked", False)
     st.session_state.setdefault("download_format", "PDF")
     st.session_state.setdefault("download_unlocked", False)
     st.session_state.setdefault("lead_name", "")
@@ -1314,8 +1316,16 @@ def main() -> None:
             return
 
         if mode == "Generate a TY Annual Plan":
+            generated_full_plan = (
+                str(result.get("answer", "")).strip()
+                if is_generator_result(str(result.get("answer_mode", "")).strip())
+                else ""
+            )
             st.session_state["generated_plan_result"] = result
             st.session_state["generated_plan_prompt"] = question
+            st.session_state["full_plan"] = generated_full_plan
+            st.session_state["email_unlocked"] = False
+            st.session_state["download_unlocked"] = False
             st.session_state["show_tailor_form"] = False
 
     answer = str(result.get("answer", "")).strip()
@@ -1325,7 +1335,13 @@ def main() -> None:
     answer_mode = str(result.get("answer_mode", "")).strip()
     generation_source = str(result.get("generation_source", "")).strip()
     model_used = str(result.get("model_used", "")).strip()
-    full_plan_text = answer if mode == "Generate a TY Annual Plan" and is_generator_result(answer_mode) else ""
+    full_plan_text = (
+        str(st.session_state.get("full_plan", "")).strip()
+        if mode == "Generate a TY Annual Plan"
+        else ""
+    )
+    if not full_plan_text and mode == "Generate a TY Annual Plan" and is_generator_result(answer_mode):
+        full_plan_text = answer
 
     if not answer and not key_points and not sources:
         if mode == "Generate a TY Annual Plan":
@@ -1338,7 +1354,7 @@ def main() -> None:
         if not full_plan_text:
             st.error("Generator mode did not return a full TY plan, so export has been disabled for this response.")
             return
-        unlocked = st.session_state.get("download_unlocked", False)
+        unlocked = bool(st.session_state.get("email_unlocked", st.session_state.get("download_unlocked", False)))
         if unlocked:
             render_generated_plan(full_plan_text)
             st.caption("You can download this plan or improve it further for your school.")
@@ -1346,49 +1362,7 @@ def main() -> None:
             render_plan_preview(full_plan_text)
             st.info("Continue to full plan by unlocking below.")
         output_language = infer_output_language(answer_mode, question)
-        markdown_path, _text_path = save_generated_plan(full_plan_text, output_language)
-        plan_title = full_plan_text.splitlines()[0].strip() if full_plan_text.splitlines() else "TY Annual Plan"
         prompt_context = parse_template_context(question)
-        pdf_bytes: bytes | None = None
-        pdf_error = ""
-        try:
-            pdf_bytes = build_pdf_bytes(full_plan_text, plan_title, context=prompt_context)
-        except Exception as exc:  # pragma: no cover
-            pdf_error = str(exc)
-        docx_bytes: bytes | None = None
-        docx_error = ""
-        try:
-            docx_bytes = build_docx_bytes(full_plan_text, context=prompt_context)
-        except Exception as exc:  # pragma: no cover
-            docx_error = str(exc)
-        export_char_count = len(full_plan_text)
-        print(
-            f"[ty-plan-export] mode={answer_mode} language={output_language} chars={export_char_count}",
-            flush=True,
-        )
-        st.markdown("### Download your formatted TY plan")
-        st.caption("The downloadable version is formatted and ready to edit and share.")
-        st.caption("Includes a clean layout suitable for school use.")
-        st.caption(f"Export source length: {export_char_count} characters.")
-        pdf_runtime_available, pdf_runtime_detail = describe_pdf_runtime_support()
-        if SHOW_PDF_DIAGNOSTIC:
-            st.caption(
-                f"Temporary diagnostic: PDF runtime support is {'available' if pdf_runtime_available else 'unavailable'}."
-            )
-            if pdf_runtime_detail:
-                st.caption(f"Temporary diagnostic: PDF runtime detail: {pdf_runtime_detail}")
-            if pdf_error:
-                st.caption(f"Temporary diagnostic: PDF unavailable reason: {pdf_error}")
-        if SHOW_DOCX_DIAGNOSTIC:
-            docx_runtime_available = bool(docx_bytes)
-            st.caption(
-                f"Temporary diagnostic: DOCX runtime support is {'available' if docx_runtime_available else 'unavailable'}."
-            )
-            if not docx_runtime_available:
-                st.caption(
-                    "Temporary diagnostic: DOCX unavailable reason: "
-                    f"{docx_error or 'build_docx_bytes returned no content.'}"
-                )
         if not unlocked:
             with st.form("download_unlock_form", clear_on_submit=False):
                 lead_email = st.text_input(
@@ -1434,9 +1408,52 @@ def main() -> None:
                         )
                     st.session_state["lead_email"] = cleaned_email
                     st.session_state["lead_name"] = cleaned_name
+                    st.session_state["email_unlocked"] = True
                     st.session_state["download_unlocked"] = True
                     st.rerun()
         else:
+            markdown_path, _text_path = save_generated_plan(full_plan_text, output_language)
+            plan_title = full_plan_text.splitlines()[0].strip() if full_plan_text.splitlines() else "TY Annual Plan"
+            pdf_bytes: bytes | None = None
+            pdf_error = ""
+            try:
+                pdf_bytes = build_pdf_bytes(full_plan_text, plan_title, context=prompt_context)
+            except Exception as exc:  # pragma: no cover
+                pdf_error = str(exc)
+            docx_bytes: bytes | None = None
+            docx_error = ""
+            try:
+                docx_bytes = build_docx_bytes(full_plan_text, context=prompt_context)
+            except Exception as exc:  # pragma: no cover
+                docx_error = str(exc)
+            export_char_count = len(full_plan_text)
+            print(
+                f"[ty-plan-export] mode={answer_mode} language={output_language} chars={export_char_count}",
+                flush=True,
+            )
+            st.markdown("### Download your formatted TY plan")
+            st.caption("The downloadable version is formatted and ready to edit and share.")
+            st.caption("Includes a clean layout suitable for school use.")
+            st.caption(f"Export source length: {export_char_count} characters.")
+            pdf_runtime_available, pdf_runtime_detail = describe_pdf_runtime_support()
+            if SHOW_PDF_DIAGNOSTIC:
+                st.caption(
+                    f"Temporary diagnostic: PDF runtime support is {'available' if pdf_runtime_available else 'unavailable'}."
+                )
+                if pdf_runtime_detail:
+                    st.caption(f"Temporary diagnostic: PDF runtime detail: {pdf_runtime_detail}")
+                if pdf_error:
+                    st.caption(f"Temporary diagnostic: PDF unavailable reason: {pdf_error}")
+            if SHOW_DOCX_DIAGNOSTIC:
+                docx_runtime_available = bool(docx_bytes)
+                st.caption(
+                    f"Temporary diagnostic: DOCX runtime support is {'available' if docx_runtime_available else 'unavailable'}."
+                )
+                if not docx_runtime_available:
+                    st.caption(
+                        "Temporary diagnostic: DOCX unavailable reason: "
+                        f"{docx_error or 'build_docx_bytes returned no content.'}"
+                    )
             if pdf_bytes and docx_bytes:
                 download_options = ["PDF", "Word (.docx)"]
             elif pdf_bytes:
@@ -1588,6 +1605,9 @@ def main() -> None:
 
                 st.session_state["generated_plan_result"] = improved_result
                 st.session_state["generated_plan_prompt"] = improved_prompt
+                st.session_state["full_plan"] = improved_answer
+                st.session_state["email_unlocked"] = False
+                st.session_state["download_unlocked"] = False
                 st.session_state["show_tailor_form"] = False
                 st.rerun()
     else:

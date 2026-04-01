@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
 }
 
 $planner_iframe_url = ciunas_ty_planner_url();
-$planner_fallback_url = preg_replace('/([?&])embed_mode=1(&?)/', '$1', $planner_iframe_url);
+$planner_fallback_url = preg_replace('/([?&])embed=true(&?)/', '$1', $planner_iframe_url);
 $planner_fallback_url = rtrim((string) $planner_fallback_url, '?&');
 if ($planner_fallback_url === '') {
     $planner_fallback_url = $planner_iframe_url;

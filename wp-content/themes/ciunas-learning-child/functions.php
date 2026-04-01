@@ -15,7 +15,7 @@ if (!defined('CIUNAS_CONTACT_EMAIL')) {
 }
 
 if (!defined('CIUNAS_TY_PLANNER_URL')) {
-    define('CIUNAS_TY_PLANNER_URL', 'http://localhost:8501/');
+    define('CIUNAS_TY_PLANNER_URL', 'https://ciunas-ty-planner.streamlit.app/');
 }
 
 function ciunas_ty_planner_url(): string
@@ -32,7 +32,7 @@ function ciunas_ty_planner_url(): string
         return '';
     }
 
-    return (string) add_query_arg('embed_mode', '1', $planner_url);
+    return (string) add_query_arg('embed', 'true', $planner_url);
 }
 
 /**
@@ -284,9 +284,9 @@ function ciunas_ensure_core_pages(): void
             'content'  => 'Teacher resources, programme documents, and sample chapter requests.',
         ),
         'transition-year-planner' => array(
-            'title'    => 'Transition Year Planner',
+            'title'    => 'Transition Year Planning Tool',
             'template' => 'page-transition-year-planner.php',
-            'content'  => 'Plan your Transition Year in minutes.',
+            'content'  => 'Generate a complete Transition Year plan in minutes.',
         ),
     );
 

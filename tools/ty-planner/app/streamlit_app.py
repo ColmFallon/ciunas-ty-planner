@@ -22,6 +22,7 @@ from urllib import request as urllib_request
 import zipfile
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -203,6 +204,32 @@ def render_plan_preview(answer: str) -> None:
             "Temporary diagnostic: Preview sections detected: "
             + (", ".join(matched_names) if matched_names else "none")
         )
+
+
+def render_scroll_anchor(anchor_id: str) -> None:
+    st.markdown(f'<div id="{anchor_id}" style="position: relative; top: -12px;"></div>', unsafe_allow_html=True)
+
+
+def maybe_scroll_to_target() -> None:
+    target = str(st.session_state.get("scroll_target", "")).strip()
+    if not target:
+        return
+    st.session_state["scroll_target"] = ""
+    components.html(
+        f"""
+        <script>
+        const scrollTargetId = {target!r};
+        const scrollToTarget = () => {{
+          const el = document.getElementById(scrollTargetId);
+          if (!el) return;
+          el.scrollIntoView({{ behavior: "smooth", block: "start" }});
+          window.scrollBy({{ top: -80, behavior: "smooth" }});
+        }};
+        setTimeout(scrollToTarget, 120);
+        </script>
+        """,
+        height=0,
+    )
 
 
 def append_coordinator_name(prompt: str, coordinator_name: str = "") -> str:
@@ -1232,6 +1259,7 @@ def main() -> None:
     st.session_state.setdefault("show_tailor_form", False)
     st.session_state.setdefault("full_plan", "")
     st.session_state.setdefault("email_unlocked", False)
+    st.session_state.setdefault("scroll_target", "")
     st.session_state.setdefault("download_format", "PDF")
     st.session_state.setdefault("download_unlocked", False)
     st.session_state.setdefault("lead_name", "")
@@ -1323,6 +1351,7 @@ def main() -> None:
             st.session_state["full_plan"] = generated_full_plan
             st.session_state["email_unlocked"] = False
             st.session_state["download_unlocked"] = False
+            st.session_state["scroll_target"] = "generated-plan"
             st.session_state["show_tailor_form"] = False
 
     answer = str(result.get("answer", "")).strip()
@@ -1351,6 +1380,7 @@ def main() -> None:
         if not full_plan_text:
             st.error("Generator mode did not return a full TY plan, so export has been disabled for this response.")
             return
+        render_scroll_anchor("generated-plan")
         unlocked = bool(st.session_state.get("email_unlocked", st.session_state.get("download_unlocked", False)))
         if unlocked:
             render_generated_plan(full_plan_text)
@@ -1361,6 +1391,7 @@ def main() -> None:
         output_language = infer_output_language(answer_mode, question)
         prompt_context = parse_template_context(question)
         if not unlocked:
+            render_scroll_anchor("download-unlock-form")
             with st.form("download_unlock_form", clear_on_submit=False):
                 lead_email = st.text_input(
                     "Email address",
@@ -1407,8 +1438,10 @@ def main() -> None:
                     st.session_state["lead_name"] = cleaned_name
                     st.session_state["email_unlocked"] = True
                     st.session_state["download_unlocked"] = True
+                    st.session_state["scroll_target"] = "download-area"
                     st.rerun()
         else:
+            render_scroll_anchor("download-area")
             markdown_path, _text_path = save_generated_plan(full_plan_text, output_language)
             plan_title = full_plan_text.splitlines()[0].strip() if full_plan_text.splitlines() else "TY Annual Plan"
             pdf_bytes: bytes | None = None
@@ -1507,8 +1540,10 @@ def main() -> None:
                 )
         if st.button("Improve this plan for my school"):
             st.session_state["show_tailor_form"] = True
+            st.session_state["scroll_target"] = "tailor-plan-form"
 
         if st.session_state.get("show_tailor_form"):
+            render_scroll_anchor("tailor-plan-form")
             st.markdown("### Tailor this plan for your school")
             st.write("Add a few details to improve the plan. Leave anything blank if not relevant.")
             with st.form("tailor_plan_form", clear_on_submit=False):
@@ -1605,6 +1640,7 @@ def main() -> None:
                 st.session_state["full_plan"] = improved_answer
                 st.session_state["email_unlocked"] = False
                 st.session_state["download_unlocked"] = False
+                st.session_state["scroll_target"] = "generated-plan"
                 st.session_state["show_tailor_form"] = False
                 st.rerun()
     else:
@@ -1637,6 +1673,8 @@ def main() -> None:
     if evidence_note and mode == "Ask a TY Planning Question":
         st.subheader("Evidence Note")
         st.write(evidence_note)
+
+    maybe_scroll_to_target()
 
 if __name__ == "__main__":
     main()

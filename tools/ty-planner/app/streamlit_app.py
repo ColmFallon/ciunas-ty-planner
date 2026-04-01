@@ -72,74 +72,95 @@ def plan_sections_map(full_plan_text: str) -> tuple[str, str, dict[str, list[str
 def extract_preview_payload(answer: str) -> tuple[str, str, str, list[str]]:
     title, subtitle, _sections = parse_plan_blocks(answer)
     language = infer_plan_language(title, subtitle)
-    canonical_headings = (
-        ["Programme Overview", "Rationale", "Aims"]
-        if language == "en"
-        else ["Forbhreathnú ar an gClár", "Réasúnaíocht", "Aidhmeanna"]
-    )
-    alias_map = heading_aliases(language)
-    all_heading_variants = set()
-    for canonical_heading, aliases in alias_map.items():
-        all_heading_variants.add(canonical_heading.strip().lower())
-        all_heading_variants.update(alias.lower() for alias in aliases)
 
     remaining_text = answer.strip()
     title_block = f"{title}\n{subtitle}".strip()
     if title_block and remaining_text.startswith(title_block):
         remaining_text = remaining_text[len(title_block) :].lstrip()
-
-    def heading_pattern(heading: str, aliases: list[str]) -> re.Pattern[str]:
-        variants = [heading, *aliases]
-        escaped = "|".join(re.escape(variant) for variant in variants if variant.strip())
-        return re.compile(
-            rf"(?im)(?:^|[\n\r]|(?<=\s))(?:(?:###?|####?)\s*)?(?:\d+\.\s*)?({escaped})\b"
-        )
-
-    section_matches: list[tuple[str, int, int]] = []
-    matched_sections: list[tuple[str, list[str]]] = []
+    intro_lines: list[str] = []
+    preview_sections: list[tuple[str, list[str]]] = []
     matched_names: list[str] = []
 
-    for canonical_heading in canonical_headings:
-        pattern = heading_pattern(canonical_heading, alias_map.get(canonical_heading, []))
-        match = pattern.search(remaining_text)
-        if not match:
-            continue
-        section_matches.append((canonical_heading, match.start(1), match.end(1)))
+    if language == "en":
+        english_sections = [
+            ("Programme Overview", "1. Programme Overview"),
+            ("Rationale", "2. Rationale"),
+            ("Aims", "3. Aims"),
+            ("Programme Structure", "4. Programme Structure"),
+        ]
+        numbered_pattern = re.compile(
+            r"(?is)(?P<label>(?<!\S)(?P<num>[1-4])\.\s*(Programme Overview|Rationale|Aims|Programme Structure)\b)"
+        )
+        numbered_matches = list(numbered_pattern.finditer(remaining_text))
 
-    if section_matches:
-        section_matches.sort(key=lambda item: item[1])
-        intro_text = clean_markdown_text(remaining_text[: section_matches[0][1]])
-        intro_lines = [intro_text] if intro_text and len(intro_text) <= 120 else []
+        if len(numbered_matches) >= 3:
+            first_match_start = numbered_matches[0].start("label")
+            intro_text = clean_markdown_text(remaining_text[:first_match_start])
+            if intro_text:
+                intro_lines = [line for line in [intro_text] if "prepared for" in line.lower()][:1]
 
-        for index, (canonical_heading, _start, heading_end) in enumerate(section_matches):
-            body_end = len(remaining_text) if index + 1 >= len(section_matches) else section_matches[index + 1][1]
-            body_slice = remaining_text[heading_end:body_end].strip()
-            body_text = clean_markdown_text(body_slice)
-            matched_sections.append((canonical_heading, [body_text] if body_text else []))
-            matched_names.append(canonical_heading)
+            by_number = {int(match.group("num")): match for match in numbered_matches}
+            for section_number, canonical_heading in enumerate(["Programme Overview", "Rationale", "Aims"], start=1):
+                match = by_number.get(section_number)
+                if not match:
+                    continue
+                next_match = by_number.get(section_number + 1)
+                body_start = match.end("label")
+                body_end = next_match.start("label") if next_match else len(remaining_text)
+                body_text = clean_markdown_text(remaining_text[body_start:body_end])
+                preview_sections.append((f"{section_number}. {canonical_heading}", [body_text] if body_text else []))
+                matched_names.append(canonical_heading)
+        else:
+            plain_pattern = re.compile(
+                r"(?im)^(?:###\s*)?(Programme Overview|Rationale|Aims|Programme Structure)\s*$"
+            )
+            plain_matches = list(plain_pattern.finditer(remaining_text))
+            if plain_matches:
+                first_match_start = plain_matches[0].start(1)
+                intro_text = clean_markdown_text(remaining_text[:first_match_start])
+                if intro_text:
+                    intro_lines = [line for line in [intro_text] if "prepared for" in line.lower()][:1]
+
+                for index, match in enumerate(plain_matches[:4]):
+                    heading = clean_markdown_text(match.group(1))
+                    if heading not in {"Programme Overview", "Rationale", "Aims"}:
+                        break
+                    body_start = match.end(1)
+                    body_end = plain_matches[index + 1].start(1) if index + 1 < len(plain_matches) else len(remaining_text)
+                    body_text = clean_markdown_text(remaining_text[body_start:body_end])
+                    preview_sections.append((heading, [body_text] if body_text else []))
+                    matched_names.append(heading)
     else:
-        intro_lines = []
+        irish_headings = [
+            "Forbhreathnú ar an gClár",
+            "Réasúnaíocht",
+            "Aidhmeanna",
+            "Struchtúr an Chláir",
+        ]
+        irish_pattern = re.compile(
+            r"(?im)^(?:###\s*)?(Forbhreathnú ar an gClár|Réasúnaíocht|Aidhmeanna|Struchtúr an Chláir)\s*$"
+        )
+        irish_matches = list(irish_pattern.finditer(remaining_text))
+        if irish_matches:
+            first_match_start = irish_matches[0].start(1)
+            intro_text = clean_markdown_text(remaining_text[:first_match_start])
+            if intro_text and "ullmhaithe do" in intro_text.lower():
+                intro_lines = [intro_text.splitlines()[0] if "\n" in intro_text else intro_text]
 
-    if not matched_sections:
-        preview_sections = parse_plan_blocks(answer)[2][:3]
-        matched_names = [heading for heading, _paragraphs in preview_sections if heading]
-    else:
-        preview_sections = matched_sections
+            for index, match in enumerate(irish_matches[:4]):
+                heading = clean_markdown_text(match.group(1))
+                if heading not in irish_headings[:3]:
+                    break
+                body_start = match.end(1)
+                body_end = irish_matches[index + 1].start(1) if index + 1 < len(irish_matches) else len(remaining_text)
+                body_text = clean_markdown_text(remaining_text[body_start:body_end])
+                preview_sections.append((heading, [body_text] if body_text else []))
+                matched_names.append(heading)
 
-    # Keep only a short non-section preface such as "Prepared for Mary".
-    if intro_lines:
-        filtered_intro = []
-        for line in intro_lines:
-            lowered_line = line.lower()
-            if any(variant in lowered_line for variant in all_heading_variants):
-                continue
-            filtered_intro.append(line)
-        intro_lines = filtered_intro[:1]
-
-    if not matched_sections:
-        preview_sections = parse_plan_blocks(answer)[2][:3]
-    else:
-        preview_sections = matched_sections
+    if not preview_sections:
+        fallback_sections = parse_plan_blocks(answer)[2][:3]
+        preview_sections = fallback_sections
+        matched_names = [heading for heading, _paragraphs in fallback_sections if heading]
 
     preview_text_parts: list[str] = []
     if title:
